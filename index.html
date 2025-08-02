@@ -580,6 +580,32 @@
             color: var(--primary-blue);
         }
 
+        .documentation-content h3 {
+            border-bottom: 2px solid var(--primary-blue);
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+
+        .documentation-content p {
+            line-height: 1.6;
+        }
+        .documentation-content ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .documentation-content li {
+            margin-bottom: 10px;
+        }
+        .documentation-content li::before {
+            content: "➤";
+            color: var(--primary-blue);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
         @media (max-width: 768px) {
             .project-list {
                 grid-template-columns: 1fr;
@@ -589,10 +615,9 @@
                 max-width: 300px;
             }
             .cms-info {
-                display: none;
-            }
-            .tariff-plans {
-                grid-template-columns: 1fr;
+                display: flex; /* Always display on mobile */
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -640,7 +665,7 @@
             <a href="#" class="menu-item" id="tariffsMenuItem">Тарифи</a>
             <a href="#" class="menu-item" id="aboutMenuItem">Про проєкт</a>
             <a href="#" class="menu-item" id="contactsMenuItem">Контакти</a>
-            <a href="#" class="menu-item">Документація</a>
+            <a href="#" class="menu-item" id="docsMenuItem">Документація</a>
             <a href="#" class="menu-item" id="signOutBtn" style="color: var(--primary-blue);">Вийти</a>
             <div class="copyright" style="position: static; text-align: center; margin-top: 20px;">© 2024 Weebwe</div>
         </div>
@@ -740,6 +765,7 @@
         const tariffsMenuItem = document.getElementById('tariffsMenuItem');
         const aboutMenuItem = document.getElementById('aboutMenuItem');
         const contactsMenuItem = document.getElementById('contactsMenuItem');
+        const docsMenuItem = document.getElementById('docsMenuItem');
 
         const projectModalOverlay = document.getElementById('projectModalOverlay');
         const projectForm = document.getElementById('projectForm');
@@ -764,7 +790,7 @@
 
         let isEditing = false;
         let editingProjectId = null;
-        let projectsLimit = 1; // dynamically updated
+        let projectsLimit = 1;
         let projectsListener = null;
         let currentTariffPlan = 'basic'; // За замовчуванням
 
@@ -830,7 +856,7 @@
                 mainContainer.style.display = 'flex';
                 userNameSpan.textContent = user.displayName;
                 userAvatarImg.src = user.photoURL;
-                updateProjectsLimit(); // Update the limit based on the current plan
+                updateProjectsLimit();
                 userPlanHeader.textContent = `Тариф: ${tariffPlans.find(plan => plan.id === currentTariffPlan).name}`;
                 renderMainPage(user.uid);
             } else {
@@ -895,12 +921,21 @@
                 sideMenu.classList.remove('open');
             }
         });
+        
+        docsMenuItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderDocsPage();
+            if (sideMenu.classList.contains('open')) {
+                sideMenu.classList.remove('open');
+            }
+        });
 
         function updateProjectsLimit() {
             const currentPlan = tariffPlans.find(plan => plan.id === currentTariffPlan);
             projectsLimit = currentPlan.limit;
-            if (document.getElementById('projectsCount')) {
-                document.getElementById('projectsCount').textContent = `0/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
+            const projectsCountSpan = document.getElementById('projectsCount');
+            if (projectsCountSpan) {
+                projectsCountSpan.textContent = `0/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
             }
         }
         
@@ -924,8 +959,6 @@
             `;
             // Re-attach event listeners after content is rendered
             const showCreateModalBtn = document.getElementById('showCreateModalBtn');
-            const projectListContainer = document.getElementById('projectList');
-            const projectsCountSpan = document.getElementById('projectsCount');
             showCreateModalBtn.addEventListener('click', () => {
                 isEditing = false;
                 editingProjectId = null;
@@ -1008,6 +1041,38 @@
                     <p>Weebwe CMS — це сучасна та інтуїтивно зрозуміла система управління контентом, створена для того, щоб зробити процес розробки та підтримки вебсайтів максимально простим та ефективним.</p>
                     <p>Наша місія — надати потужний інструмент, який дозволить вам реалізувати будь-які ідеї, від простих блогів до складних корпоративних порталів, не занурюючись у технічні деталі.</p>
                     <p>Розробка Weebwe CMS здійснюється з урахуванням сучасних стандартів безпеки, продуктивності та зручності користування. Ми постійно працюємо над новими функціями, щоб наша платформа залишалася актуальною та відповідала найвищим вимогам ринку.</p>
+                </div>
+            `;
+        }
+        
+        function renderDocsPage() {
+            mainContent.innerHTML = `
+                <div class="page-content documentation-content">
+                    <h2>Документація Weebwe CMS</h2>
+                    <p>Ласкаво просимо до документації Weebwe CMS! Тут ви знайдете відповіді на основні питання щодо роботи з системою. Weebwe CMS — це інтуїтивно зрозумілий інструмент для створення та управління вашими вебпроєктами.</p>
+                    
+                    <h3>1. Головна сторінка</h3>
+                    <p>Після входу в систему ви потрапляєте на **Головну сторінку**, де розташовані всі ваші проєкти.</p>
+                    <ul>
+                        <li>**Створити новий проєкт**: Натисніть кнопку з плюсом, щоб створити новий проєкт. Ви можете завантажити логотип, вказати назву та короткий опис.</li>
+                        <li>**Редагувати проєкт**: Натисніть кнопку "Редагувати", щоб змінити назву, опис або логотип існуючого проєкту.</li>
+                        <li>**Увійти в проєкт**: Кнопка "Увійти" дасть змогу перейти до панелі керування конкретним проєктом (у розробці).</li>
+                        <li>**Зібрати проєкт**: Ця функція відповідає за збірку та публікацію вашого проєкту (у розробці).</li>
+                        <li>**Видалити проєкт**: Видаляє проєкт назавжди. Будьте уважні, цю дію неможливо скасувати.</li>
+                    </ul>
+
+                    <h3>2. Тарифи</h3>
+                    <p>У розділі **Тарифи** ви можете ознайомитись з доступними планами та вибрати той, що найкраще підходить для ваших потреб. Кожен тариф має свої ліміти на кількість проєктів та набір функцій.</p>
+                    <ul>
+                        <li>**Базовий**: Безкоштовний тариф, ідеальний для невеликих проєктів.</li>
+                        <li>**Професійний**, **Бізнес**, **Корпоративний**: Надають розширені можливості, більшу кількість проєктів та пріоритетну підтримку.</li>
+                    </ul>
+
+                    <h3>3. Контакти</h3>
+                    <p>Якщо у вас виникли будь-які питання або вам потрібна допомога, зверніться до нас через розділ **Контакти**. Ви знайдете там інформацію для зв'язку з технічною підтримкою та відділом продажів.</p>
+
+                    <h3>4. Що далі?</h3>
+                    <p>Ми постійно працюємо над розширенням функціонала Weebwe CMS. Найближчим часом буде реалізовано повну панель керування проєктами, інтеграцію з різними модулями та багато іншого. Слідкуйте за оновленнями!</p>
                 </div>
             `;
         }
