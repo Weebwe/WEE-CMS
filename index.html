@@ -596,7 +596,6 @@
         .contact-btn:hover {
             background-color: var(--enter-blue-hover);
         }
-
         .documentation-content h3 {
             border-bottom: 2px solid var(--primary-blue);
             padding-bottom: 5px;
@@ -625,10 +624,10 @@
         .contact-form-group {
             display: flex;
             flex-direction: column;
+            gap: 5px;
         }
 
         .contact-form-group label {
-            margin-bottom: 5px;
             font-weight: bold;
         }
 
@@ -683,7 +682,7 @@
                 <img src="img/weecms.png" alt="CMS Logo" class="logo-cms">
                 <div class="cms-info">
                     <span class="cms-title">Weebwe CMS</span>
-                    <span id="userPlanHeader" class="cms-plan">Тариф: Базовий</span>
+                    <span id="userPlanHeader" class="cms-plan"></span>
                 </div>
             </div>
             <div></div>
@@ -758,44 +757,11 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="contactModalOverlay">
-        <div class="modal">
-            <button type="button" class="modal-close-btn">×</button>
-            <h3>Написати нам</h3>
-            <form id="contactForm">
-                <div class="contact-form-group">
-                    <label for="contact-from-email">Від кого (ваша пошта):</label>
-                    <input type="email" id="contact-from-email" name="from_email" readonly required>
-                </div>
-                <div class="contact-form-group">
-                    <label for="contact-subject">Тема:</label>
-                    <input type="text" id="contact-subject" name="subject" required>
-                </div>
-                <div class="contact-form-group">
-                    <label for="contact-message">Повідомлення:</label>
-                    <textarea id="contact-message" name="message" rows="5" required></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" id="contactClearBtn">Очистити</button>
-                    <button type="submit" id="contactSendBtn">Відправити</button>
-                </div>
-            </form>
-            <div class="modal-content-status" id="contactStatusContent">
-                <div class="progress-bar-container">
-                    <div class="progress-bar" id="contactProgressBar"></div>
-                </div>
-                <p id="contactStatusText" class="modal-status-text"></p>
-            </div>
-        </div>
-    </div>
-
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-
     <script>
         // Your Firebase config
         const firebaseConfig = {
@@ -807,13 +773,6 @@
             appId: "1:725583199844:web:b66b1bec7f4060c8016971",
             measurementId: "G-RS92ZEH33G"
         };
-        
-        // Your EmailJS config
-        // Вставте свої дані EmailJS сюди
-        // https://www.emailjs.com/
-        const emailJsServiceId = 'YOUR_EMAILJS_SERVICE_ID'; // Замініть на свій Service ID
-        const emailJsTemplateId = 'YOUR_EMAILJS_TEMPLATE_ID'; // Замініть на свій Template ID
-        const emailJsPublicKey = 'YOUR_EMAILJS_PUBLIC_KEY'; // Замініть на свій Public Key
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
@@ -862,18 +821,6 @@
         const deleteConfirmText = document.getElementById('deleteConfirmText');
         const deleteConfirmCancelBtn = document.getElementById('deleteConfirmCancelBtn');
         const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
-
-        const contactModalOverlay = document.getElementById('contactModalOverlay');
-        const contactForm = document.getElementById('contactForm');
-        const contactFromEmailInput = document.getElementById('contact-from-email');
-        const contactSubjectInput = document.getElementById('contact-subject');
-        const contactMessageInput = document.getElementById('contact-message');
-        const contactClearBtn = document.getElementById('contactClearBtn');
-        const contactSendBtn = document.getElementById('contactSendBtn');
-        const contactStatusContent = document.getElementById('contactStatusContent');
-        const contactProgressBar = document.getElementById('contactProgressBar');
-        const contactStatusText = document.getElementById('contactStatusText');
-
 
         let isEditing = false;
         let editingProjectId = null;
@@ -937,14 +884,19 @@
         }, 500);
 
         // --- Authentication ---
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
                 authScreen.style.display = 'none';
                 mainContainer.style.display = 'flex';
                 userNameSpan.textContent = user.displayName;
                 userAvatarImg.src = user.photoURL;
-                updateProjectsLimit();
-                userPlanHeader.textContent = `Тариф: ${tariffPlans.find(plan => plan.id === currentTariffPlan).name}`;
+
+                // Перевіряємо та створюємо/оновлюємо документ користувача в Firestore
+                await ensureUserDocument(user);
+                
+                // Завантажуємо тарифний план користувача
+                await loadUserTariff(user.uid);
+
                 renderMainPage(user.uid);
             } else {
                 if (splashScreen.style.display === 'none') {
@@ -962,6 +914,39 @@
         signOutBtn.addEventListener('click', () => {
             auth.signOut();
         });
+        
+        async function ensureUserDocument(user) {
+            const userRef = db.collection('users').doc(user.uid);
+            const doc = await userRef.get();
+            if (!doc.exists) {
+                await userRef.set({
+                    email: user.email,
+                    tariffPlan: 'basic'
+                });
+            }
+        }
+        
+        async function loadUserTariff(userId) {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                currentTariffPlan = userDoc.data().tariffPlan;
+            } else {
+                currentTariffPlan = 'basic';
+            }
+            updateProjectsLimit();
+            const planName = tariffPlans.find(plan => plan.id === currentTariffPlan).name;
+            userPlanHeader.textContent = `Тариф: ${planName}`;
+        }
+        
+        async function updateUserTariff(userId, planId) {
+            await db.collection('users').doc(userId).update({
+                tariffPlan: planId
+            });
+            currentTariffPlan = planId;
+            const planName = tariffPlans.find(plan => plan.id === currentTariffPlan).name;
+            userPlanHeader.textContent = `Тариф: ${planName}`;
+            updateProjectsLimit();
+        }
 
         // --- Menu Logic ---
         hamburgerMenu.addEventListener('click', () => {
@@ -1086,16 +1071,15 @@
             `;
             
             document.querySelectorAll('.subscribe-btn:not(.current-plan-btn)').forEach(button => {
-                button.addEventListener('click', (e) => {
+                button.addEventListener('click', async (e) => {
                     const planId = e.target.dataset.planId;
                     const planName = tariffPlans.find(p => p.id === planId).name;
                     
-                    // Імітація зміни тарифу
-                    currentTariffPlan = planId;
-                    userPlanHeader.textContent = `Тариф: ${planName}`;
-                    updateProjectsLimit();
-                    showMessage("Тариф змінено!", `Ваш тарифний план успішно оновлено на "${planName}".`);
-                    renderTariffPage(); // Перемалювати сторінку, щоб оновити кнопки
+                    if (auth.currentUser) {
+                        await updateUserTariff(auth.currentUser.uid, planId);
+                        showMessage("Тариф змінено!", `Ваш тарифний план успішно оновлено на "${planName}".`);
+                        renderTariffPage(); // Перемалювати сторінку, щоб оновити кнопки
+                    }
                 });
             });
         }
@@ -1121,12 +1105,10 @@
                             <p>Україна, м. Київ, вул. Хрещатик, 1</p>
                         </div>
                     </div>
-                    <button class="contact-btn" id="writeToUsBtn">Написати нам</button>
                 </div>
             `;
-            document.getElementById('writeToUsBtn').addEventListener('click', openContactForm);
         }
-
+        
         function renderAboutPage() {
             mainContent.innerHTML = `
                 <div class="page-content">
@@ -1218,73 +1200,6 @@
                 deleteConfirmModalOverlay.style.display = 'none';
             };
         }
-
-        // --- Contact Form Modal & Logic ---
-        function openContactForm() {
-            const user = auth.currentUser;
-            if (!user) {
-                showMessage("Увійдіть", "Будь ласка, увійдіть в систему, щоб залишити повідомлення.");
-                return;
-            }
-            contactFromEmailInput.value = user.email;
-            contactForm.style.display = 'flex';
-            contactStatusContent.style.display = 'none';
-            contactModalOverlay.style.display = 'flex';
-        }
-
-        contactClearBtn.addEventListener('click', () => {
-            contactSubjectInput.value = '';
-            contactMessageInput.value = '';
-        });
-
-        contactForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const user = auth.currentUser;
-            if (!user) {
-                showMessage("Помилка", "Користувач не авторизований.");
-                return;
-            }
-            
-            contactForm.style.display = 'none';
-            contactStatusContent.style.display = 'flex';
-            contactProgressBar.style.width = '0';
-            contactStatusText.textContent = 'Відправлення...';
-
-            const progressUpdateInterval = setInterval(() => {
-                let currentWidth = parseFloat(contactProgressBar.style.width);
-                if (currentWidth < 90) {
-                    contactProgressBar.style.width = `${currentWidth + 5}%`;
-                }
-            }, 200);
-
-            try {
-                // Відправка листа через EmailJS
-                await emailjs.send(emailJsServiceId, emailJsTemplateId, {
-                    from_email: user.email,
-                    subject: sanitizeInput(contactSubjectInput.value),
-                    message: sanitizeInput(contactMessageInput.value),
-                    to_email: "weeb.llc@gmail.com"
-                }, {
-                    publicKey: emailJsPublicKey
-                });
-                
-                clearInterval(progressUpdateInterval);
-                contactProgressBar.style.width = '100%';
-                contactStatusText.textContent = 'Повідомлення успішно відправлено!';
-                contactStatusText.classList.remove('error');
-                contactStatusText.classList.add('success');
-                
-            } catch (error) {
-                clearInterval(progressUpdateInterval);
-                contactProgressBar.style.width = '100%';
-                contactStatusText.textContent = `Помилка: ${error.text || 'невідома'}`;
-                contactStatusText.classList.remove('success');
-                contactStatusText.classList.add('error');
-                console.error('Error sending email:', error);
-            }
-        });
-
 
         // --- Project CRUD Functions ---
         function sanitizeInput(input) {
