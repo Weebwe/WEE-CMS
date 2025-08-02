@@ -23,6 +23,8 @@
             --build-green-hover: #45a049;
             --delete-red: #d32f2f;
             --delete-red-hover: #c02828;
+            --activate-green: #2196F3;
+            --activate-green-hover: #1976D2;
             --current-plan-color: #f0f0f0;
             --current-plan-text: #999999;
         }
@@ -168,8 +170,13 @@
             font-style: italic;
         }
         .test-buttons {
-            display: flex;
-            gap: 10px;
+            display: none;
+        }
+        @media (min-width: 769px) {
+            .test-buttons {
+                display: flex;
+                gap: 10px;
+            }
         }
         .test-buttons button {
             padding: 5px 10px;
@@ -265,8 +272,19 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            border: 2px solid transparent;
         }
         
+        .project-card.inactive {
+            border: 2px dashed var(--error-red);
+            background-color: #fffafa;
+            opacity: 0.7;
+        }
+        
+        .project-card.selected {
+            border: 2px solid var(--primary-blue);
+        }
+
         .project-card-header {
             display: flex;
             align-items: center;
@@ -304,6 +322,11 @@
             transition: background-color 0.3s ease;
             white-space: nowrap;
         }
+        
+        .project-actions button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
 
         .project-actions .edit-btn { background-color: var(--edit-orange); border-color: var(--edit-orange); }
         .project-actions .edit-btn:hover { background-color: var(--edit-orange-hover); }
@@ -313,6 +336,8 @@
         .project-actions .build-btn:hover { background-color: var(--build-green-hover); }
         .project-actions .delete-btn { background-color: var(--delete-red); border-color: var(--delete-red); }
         .project-actions .delete-btn:hover { background-color: var(--delete-red-hover); }
+        .project-actions .activate-btn { background-color: var(--activate-green); border-color: var(--activate-green); }
+        .project-actions .activate-btn:hover { background-color: var(--activate-green-hover); }
 
         .project-actions button svg {
             width: 20px;
@@ -338,11 +363,6 @@
             background-color: var(--success-green-hover);
         }
 
-        .create-project-btn svg {
-            width: 20px;
-            height: 20px;
-            fill: var(--white);
-        }
         .create-project-btn[disabled] {
             background-color: #ccc;
             cursor: not-allowed;
@@ -665,22 +685,69 @@
             box-sizing: border-box;
         }
 
-        /* Modal для вибору проєкту */
-        .select-project-modal .project-list {
-            display: flex;
-            flex-direction: column;
+        /* Стилі для модального вікна вибору проекту */
+        .selection-modal .modal {
+            max-width: 600px;
         }
-        .select-project-modal .project-card {
+        .selection-modal .project-list {
+            grid-template-columns: 1fr;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .selection-modal .project-card {
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+            position: relative;
         }
-        .select-project-modal .project-card.selected {
-            border: 2px solid var(--primary-blue);
-        }
-        .select-project-modal .project-card:hover {
+        .selection-modal .project-card:hover {
             background-color: var(--secondary-blue);
         }
-
+        .selection-modal .project-card.selected {
+            border-color: var(--primary-blue);
+        }
+        
+        .selection-modal .selection-control {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: var(--white);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .selection-modal .selection-control.selected {
+            background-color: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
+        
+        .selection-modal .selection-control.selected svg {
+            fill: var(--white);
+        }
+        
+        .selection-modal .selection-control svg {
+            width: 16px;
+            height: 16px;
+            fill: #ccc;
+            transition: fill 0.3s ease;
+        }
+        
+        .selection-info {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .selection-modal .modal-actions {
+            justify-content: center;
+        }
+        
         @media (max-width: 768px) {
             .project-list {
                 grid-template-columns: 1fr;
@@ -694,14 +761,12 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
-            .test-buttons {
-                display: none;
-            }
         }
     </style>
 </head>
 <body>
 
+    <!-- Splash Screen -->
     <div class="splash-screen" id="splashScreen">
         <div class="logo-container">
             <img src="img/weebwe.png" alt="Weebwe Logo" class="logo" id="logoWeebwe">
@@ -713,12 +778,14 @@
         <div class="copyright">© 2024 Weebwe</div>
     </div>
 
+    <!-- Auth Screen -->
     <div class="auth-screen" id="authScreen">
         <img src="img/weecms.png" alt="CMS Logo" class="auth-screen-logo">
         <button id="googleSignInBtn">Увійти за допомогою Google</button>
         <div class="copyright" style="position: absolute; bottom: 20px;">© 2024 Weebwe</div>
     </div>
 
+    <!-- Main CMS Container -->
     <div class="main-container" id="mainContainer">
         <header>
             <div class="header-left">
@@ -733,9 +800,11 @@
             <div class="test-buttons">
                 <button id="finishTariffBtn">Закінчити тариф</button>
                 <button id="extendTariffBtn">Продовжити тариф</button>
+                <button id="passTenDaysBtn">Пройшло 10 днів</button>
             </div>
         </header>
 
+        <!-- Sidebar Menu -->
         <div class="menu" id="sideMenu">
             <div class="menu-header">
                 <img id="userAvatar" class="avatar" src="">
@@ -753,9 +822,11 @@
         </div>
 
         <div class="main-content" id="mainContent">
-            </div>
+            <!-- Content will be injected here dynamically -->
+        </div>
     </div>
 
+    <!-- Modal for Create/Edit Project -->
     <div class="modal-overlay" id="projectModalOverlay">
         <div class="modal">
             <button type="button" class="modal-close-btn">×</button>
@@ -783,6 +854,7 @@
         </div>
     </div>
 
+    <!-- Modal for messages -->
     <div class="modal-overlay message-modal-overlay" id="messageModalOverlay">
         <div class="modal message-modal">
             <button type="button" class="modal-close-btn">×</button>
@@ -794,6 +866,7 @@
         </div>
     </div>
 
+    <!-- Modal for delete confirmation -->
     <div class="modal-overlay message-modal-overlay" id="deleteConfirmModalOverlay">
         <div class="modal message-modal">
             <h3 id="deleteConfirmTitle">Підтвердження видалення</h3>
@@ -805,25 +878,29 @@
         </div>
     </div>
 
-    <div class="modal-overlay select-project-modal" id="selectProjectModalOverlay">
+    <!-- Modal для вибору проєктів, які не відповідають тарифу -->
+    <div class="modal-overlay selection-modal" id="selectionProjectsModalOverlay">
         <div class="modal">
-            <h3 id="selectProjectTitle" style="text-align: center;">Оберіть проєкт для збереження</h3>
-            <p id="selectProjectText" style="text-align: center;">Термін дії вашого тарифу закінчився. Ви можете залишити лише один проєкт. Інші проєкти будуть видалені через 10 днів, якщо ви не продовжите тариф.</p>
-            <div class="project-list" id="selectProjectList">
-                </div>
+            <h3 id="selectionModalTitle" style="text-align: center;">Виберіть проєкти для збереження</h3>
+            <p id="selectionModalText" style="text-align: center;"></p>
+            <div class="selection-info" id="selectionInfo"></div>
+            <div class="project-list" id="selectionProjectList">
+                <!-- Projects to choose will be here -->
+            </div>
             <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
-                <button id="saveSelectedProjectBtn" class="contact-btn" disabled>Зберегти вибраний проєкт</button>
+                <button id="saveSelectedProjectsBtn" class="contact-btn" disabled>Зберегти вибрані проєкти</button>
             </div>
         </div>
     </div>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script>
-        // Your Firebase config
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
             apiKey: "AIzaSyCL2hyJagh8yZagfdgNY8CKBH3qnEoPMDY",
             authDomain: "wee-cms-cfb94.firebaseapp.com",
@@ -863,6 +940,7 @@
         const docsMenuItem = document.getElementById('docsMenuItem');
         const finishTariffBtn = document.getElementById('finishTariffBtn');
         const extendTariffBtn = document.getElementById('extendTariffBtn');
+        const passTenDaysBtn = document.getElementById('passTenDaysBtn');
 
         const projectModalOverlay = document.getElementById('projectModalOverlay');
         const projectForm = document.getElementById('projectForm');
@@ -884,9 +962,12 @@
         const deleteConfirmText = document.getElementById('deleteConfirmText');
         const deleteConfirmCancelBtn = document.getElementById('deleteConfirmCancelBtn');
         const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
-        const selectProjectModalOverlay = document.getElementById('selectProjectModalOverlay');
-        const selectProjectList = document.getElementById('selectProjectList');
-        const saveSelectedProjectBtn = document.getElementById('saveSelectedProjectBtn');
+        const selectionProjectsModalOverlay = document.getElementById('selectionProjectsModalOverlay');
+        const selectionModalTitle = document.getElementById('selectionModalTitle');
+        const selectionModalText = document.getElementById('selectionModalText');
+        const selectionInfo = document.getElementById('selectionInfo');
+        const selectionProjectList = document.getElementById('selectionProjectList');
+        const saveSelectedProjectsBtn = document.getElementById('saveSelectedProjectsBtn');
 
         let isEditing = false;
         let editingProjectId = null;
@@ -894,7 +975,7 @@
         let projectsListener = null;
         let currentTariffPlan = 'basic';
         let expiryDate = null;
-        let selectedProjectToKeep = null;
+        let selectedProjectsToKeep = [];
 
         // Тарифні плани
         const tariffPlans = [
@@ -902,7 +983,7 @@
                 id: 'basic',
                 name: 'Базовий',
                 price: 'Безкоштовно',
-                features: ['До 1 проєкту', 'Основні інструменти', 'Доступ до документації'],
+                features: ['1 проєкт', 'Основні інструменти', 'Доступ до документації'],
                 limit: 1,
                 isFree: true
             },
@@ -910,16 +991,16 @@
                 id: 'professional',
                 name: 'Професійний',
                 price: '$10/місяць',
-                features: ['До 10 проєктів', 'Розширені інструменти SEO', 'Додаткові модулі', 'Пріоритетна підтримка'],
-                limit: 10,
+                features: ['До 2 проєктів', 'Розширені інструменти SEO', 'Додаткові модулі', 'Пріоритетна підтримка'],
+                limit: 2,
                 isFree: false
             },
             {
                 id: 'business',
                 name: 'Бізнес',
                 price: '$30/місяць',
-                features: ['До 30 проєктів', 'Підключення кастомних модулів', 'VIP-підтримка 24/7', 'Особистий менеджер'],
-                limit: 30,
+                features: ['До 3 проєктів', 'Підключення кастомних модулів', 'VIP-підтримка 24/7', 'Особистий менеджер'],
+                limit: 3,
                 isFree: false
             },
             {
@@ -931,6 +1012,8 @@
                 isFree: false
             }
         ];
+        
+        let previousTariffPlan = 'basic';
 
         // --- Splash Screen & Initial Loading ---
         let progress = 0;
@@ -998,28 +1081,42 @@
         extendTariffBtn.addEventListener('click', async () => {
             const user = auth.currentUser;
             if (user) {
-                await extendTariff(user.uid);
-                await loadUserTariff(user.uid);
-                showMessage("Тариф продовжено", `Ваш тарифний план подовжено ще на 30 днів.`);
+                const planToExtend = previousTariffPlan !== 'basic' ? previousTariffPlan : currentTariffPlan;
+                await updateUserTariff(user.uid, planToExtend);
+                
+                const planName = tariffPlans.find(p => p.id === planToExtend).name;
+                showMessage("Тариф продовжено", `Ваш тарифний план "${planName}" подовжено ще на 30 днів.`);
+
+                await handleExpiredTariff(user.uid);
                 renderMainPage(user.uid);
             }
         });
         
+        passTenDaysBtn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (user) {
+                const projectsToUpdate = await db.collection('projects').where('userId', '==', user.uid).where('status', '==', 'to-delete').get();
+                if (!projectsToUpdate.empty) {
+                    const batch = db.batch();
+                    const pastDate = new Date();
+                    pastDate.setDate(pastDate.getDate() - 10);
+                    projectsToUpdate.docs.forEach(doc => {
+                        batch.update(doc.ref, { deletionDate: pastDate });
+                    });
+                    await batch.commit();
+                    showMessage("Тестування", "Для всіх заблокованих проєктів дата видалення перенесена на 10 днів у минуле. Оновіть сторінку для перевірки.");
+                    renderMainPage(user.uid);
+                } else {
+                    showMessage("Тестування", "Немає заблокованих проєктів для тестування.");
+                }
+            }
+        });
+
         async function simulateTariffExpiration(userId) {
             const userRef = db.collection('users').doc(userId);
             const pastDate = new Date();
             pastDate.setDate(pastDate.getDate() - 1);
             await userRef.update({ expiryDate: pastDate });
-        }
-        
-        async function extendTariff(userId) {
-            const userRef = db.collection('users').doc(userId);
-            let newExpiryDate = new Date();
-            if (expiryDate && expiryDate > new Date()) {
-                newExpiryDate = expiryDate;
-            }
-            newExpiryDate.setDate(newExpiryDate.getDate() + 30);
-            await userRef.update({ expiryDate: newExpiryDate, tariffPlan: currentTariffPlan });
         }
         
         async function ensureUserDocument(user) {
@@ -1029,6 +1126,7 @@
                 await userRef.set({
                     email: user.email,
                     tariffPlan: 'basic',
+                    previousTariffPlan: 'basic',
                     expiryDate: null
                 });
             }
@@ -1039,9 +1137,11 @@
             if (userDoc.exists) {
                 const data = userDoc.data();
                 currentTariffPlan = data.tariffPlan || 'basic';
+                previousTariffPlan = data.previousTariffPlan || 'basic';
                 expiryDate = data.expiryDate ? data.expiryDate.toDate() : null;
             } else {
                 currentTariffPlan = 'basic';
+                previousTariffPlan = 'basic';
                 expiryDate = null;
             }
             
@@ -1071,8 +1171,13 @@
         async function updateUserTariff(userId, planId) {
             const userRef = db.collection('users').doc(userId);
             const plan = tariffPlans.find(p => p.id === planId);
+            const oldPlan = tariffPlans.find(p => p.id === currentTariffPlan);
             
-            let updateData = { tariffPlan: planId };
+            let updateData = { 
+                tariffPlan: planId,
+                previousTariffPlan: oldPlan.isFree ? previousTariffPlan : oldPlan.id 
+            };
+
             if (!plan.isFree) {
                 const now = new Date();
                 let newExpiryDate = now;
@@ -1088,85 +1193,145 @@
             await userRef.update(updateData);
             currentTariffPlan = planId;
             expiryDate = updateData.expiryDate;
+            previousTariffPlan = updateData.previousTariffPlan;
             updateUIWithTariff();
         }
 
         async function handleExpiredTariff(userId) {
-            if (expiryDate && expiryDate < new Date()) {
-                const userRef = db.collection('users').doc(userId);
-                const userDoc = await userRef.get();
-                const oldTariff = userDoc.data().tariffPlan;
+            const userRef = db.collection('users').doc(userId);
+            const userDoc = await userRef.get();
+            const data = userDoc.data();
+            const oldTariff = data.tariffPlan;
+            const expiry = data.expiryDate ? data.expiryDate.toDate() : null;
 
-                if (oldTariff !== 'basic') {
+            if (expiry && expiry < new Date() && oldTariff !== 'basic') {
+                const activeProjectsSnapshot = await db.collection('projects').where('userId', '==', userId).where('status', '==', 'active').get();
+                if (activeProjectsSnapshot.size > 1) {
                     await userRef.update({
                         tariffPlan: 'basic',
-                        expiryDate: null
+                        expiryDate: null,
+                        previousTariffPlan: oldTariff 
+                    });
+
+                    currentTariffPlan = 'basic';
+                    expiryDate = null;
+                    updateUIWithTariff();
+                    showSelectionModal(userId, activeProjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), 1, "Термін дії вашого тарифу закінчився. Ви були переведені на базовий тариф і можете залишити лише один проєкт. Інші проєкти будуть видалені через 10 днів, якщо ви не продовжите тариф.");
+                } else {
+                    await userRef.update({
+                        tariffPlan: 'basic',
+                        expiryDate: null,
+                        previousTariffPlan: oldTariff 
                     });
                     
                     currentTariffPlan = 'basic';
                     expiryDate = null;
                     updateUIWithTariff();
-
-                    const projectsSnapshot = await db.collection('projects').where('userId', '==', userId).get();
-                    if (projectsSnapshot.size > 1) {
-                        showSelectProjectModal(projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-                    } else {
-                        showMessage("Тариф закінчився", "Термін дії вашого тарифу закінчився. Ви були переведені на базовий тариф.");
-                    }
+                    showMessage("Тариф закінчився", "Термін дії вашого тарифу закінчився. Ви були переведені на базовий тариф.");
                 }
-            } else if (expiryDate && expiryDate < addDays(new Date(), 10) && expiryDate > new Date()) {
-                showMessage("Увага", `Термін дії вашого тарифу скоро закінчиться. Будь ласка, оновіть свій план.`, () => {
-                    renderTariffPage();
-                });
             }
         }
+        
+        async function checkProjectsStatusAndRender(userId) {
+            const expiredProjectsSnapshot = await db.collection('projects').where('userId', '==', userId).where('status', '==', 'to-delete').where('deletionDate', '<', new Date()).get();
+            if (!expiredProjectsSnapshot.empty) {
+                const batch = db.batch();
+                expiredProjectsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+            }
 
-        async function showSelectProjectModal(projects) {
-            selectProjectList.innerHTML = '';
-            selectProjectModalOverlay.style.display = 'flex';
+            const projectsSnapshot = await db.collection('projects').where('userId', '==', userId).get();
+            const allProjects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            const activeProjectsCount = allProjects.filter(p => p.status === 'active').length;
+            const projectsAboveLimit = activeProjectsCount - projectsLimit;
+
+            if (projectsAboveLimit > 0) {
+                const message = `Кількість ваших проєктів (${activeProjectsCount}) перевищує ліміт поточного тарифу (${projectsLimit}). Будь ласка, оберіть ${projectsLimit} проєкт${getPluralForm(projectsLimit, 'а', 'и', 'ів')} для збереження. Решта буде заблокована.`;
+                showSelectionModal(userId, allProjects, projectsLimit, message);
+            } else {
+                fetchProjects(userId);
+            }
+        }
+        
+        async function showSelectionModal(userId, projects, limit, message) {
+            selectionProjectList.innerHTML = '';
+            selectionModalText.textContent = message;
+            selectionProjectsModalOverlay.style.display = 'flex';
             
-            selectedProjectToKeep = null;
-            saveSelectedProjectBtn.disabled = true;
+            selectedProjectsToKeep = projects.filter(p => p.status === 'active' && limit > 0).slice(0, limit).map(p => p.id);
+            updateSelectionInfo(limit);
+            
+            saveSelectedProjectsBtn.disabled = selectedProjectsToKeep.length !== limit;
 
             projects.forEach(project => {
-                const projectCard = document.createElement('div');
-                projectCard.className = 'project-card';
-                projectCard.dataset.projectId = project.id;
-                projectCard.innerHTML = `
-                    <div class="project-card-header">
-                        <img src="${project.logoUrl || 'https://via.placeholder.com/50'}" alt="${project.name} logo" class="project-logo">
-                        <div>
-                            <h4 style="margin: 0;">${project.name}</h4>
-                            <p style="margin: 5px 0 0; font-size: 14px; color: var(--light-text);">${project.description}</p>
-                        </div>
-                    </div>
-                `;
-                projectCard.addEventListener('click', () => {
-                    document.querySelectorAll('.project-card').forEach(card => card.classList.remove('selected'));
-                    projectCard.classList.add('selected');
-                    selectedProjectToKeep = project.id;
-                    saveSelectedProjectBtn.disabled = false;
-                });
-                selectProjectList.appendChild(projectCard);
+                const projectCard = createProjectCardElement(project, 'selection-item', true);
+                const selectionControl = projectCard.querySelector('.selection-control');
+                
+                if (selectedProjectsToKeep.includes(project.id)) {
+                    selectionControl.classList.add('selected');
+                }
+                
+                selectionCardClickHandler(projectCard, project.id, limit);
+                selectionProjectList.appendChild(projectCard);
             });
         }
         
-        saveSelectedProjectBtn.addEventListener('click', async () => {
-            if (selectedProjectToKeep) {
-                await deleteOtherProjects(auth.currentUser.uid, selectedProjectToKeep);
-                selectProjectModalOverlay.style.display = 'none';
-                showMessage("Проєкти збережено", "Решта ваших проєктів буде видалено протягом 10 днів. Ви можете відновити їх, оновивши свій тариф.");
-                renderMainPage(auth.currentUser.uid);
+        function selectionCardClickHandler(projectCard, projectId, limit) {
+            projectCard.addEventListener('click', (e) => {
+                // Ensure the click target is the card itself or the selection control, not the project card details
+                if (e.target.closest('.project-card') === projectCard && !e.target.closest('.project-logo') && !e.target.closest('h4') && !e.target.closest('p')) {
+                    const selectionControl = projectCard.querySelector('.selection-control');
+                    const isSelected = selectionControl.classList.toggle('selected');
+                    
+                    if (isSelected) {
+                        if (selectedProjectsToKeep.length < limit) {
+                            selectedProjectsToKeep.push(projectId);
+                        } else {
+                            // Якщо ліміт перевищено, знімаємо виділення з елемента
+                            selectionControl.classList.remove('selected');
+                        }
+                    } else {
+                        selectedProjectsToKeep = selectedProjectsToKeep.filter(id => id !== projectId);
+                    }
+                    
+                    updateSelectionInfo(limit);
+                    saveSelectedProjectsBtn.disabled = selectedProjectsToKeep.length !== limit;
+                }
+            });
+        }
+        
+        saveSelectedProjectsBtn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (user) {
+                selectionProjectsModalOverlay.style.display = 'none';
+                
+                await updateProjectsStatus(user.uid, selectedProjectsToKeep);
+                
+                showMessage("Проєкти оновлено", `Ви успішно зберегли обрані проєкти. Решта буде видалена протягом 10 днів, якщо ви не оновите тариф.`, () => {
+                    renderMainPage(user.uid);
+                });
             }
         });
+        
+        function updateSelectionInfo(limit) {
+            const projectsText = getPluralForm(limit, 'проєкт', 'проєкти', 'проєктів');
+            selectionInfo.textContent = `Вибрано ${selectedProjectsToKeep.length} з ${limit} ${projectsText}.`;
+        }
 
-        async function deleteOtherProjects(userId, projectIdToKeep) {
-            const projectsRef = db.collection('projects').where('userId', '==', userId).where(firebase.firestore.FieldPath.documentId(), '!=', projectIdToKeep);
+        async function updateProjectsStatus(userId, projectsToKeep) {
+            const projectsRef = db.collection('projects').where('userId', '==', userId);
             const projectsSnapshot = await projectsRef.get();
             
             const batch = db.batch();
+            const tenDaysFromNow = addDays(new Date(), 10);
+            
             projectsSnapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
+                if (!projectsToKeep.includes(doc.id)) {
+                    batch.update(doc.ref, { status: 'to-delete', deletionDate: tenDaysFromNow });
+                } else {
+                    batch.update(doc.ref, { status: 'active', deletionDate: null });
+                }
             });
             await batch.commit();
         }
@@ -1235,8 +1400,9 @@
         }
         
         function getPluralForm(number, one, few, many) {
-            if (number % 10 === 1 && number % 100 !== 11) return one;
-            if (number % 10 >= 2 && number % 10 <= 4 && (number % 100 < 10 || number % 100 >= 20)) return few;
+            const absNumber = Math.abs(number);
+            if (absNumber === 1) return one;
+            if (absNumber >= 2 && absNumber <= 4) return few;
             return many;
         }
 
@@ -1247,26 +1413,29 @@
         }
 
         // --- Dynamic Page Rendering ---
-        function renderMainPage(userId) {
+        async function renderMainPage(userId) {
             mainContent.innerHTML = `
                 <div class="projects-header">
                     <h2 style="margin: 0;">Мої проєкти</h2>
                     <span id="projectsCount">0/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно</span>
                 </div>
                 <div class="project-list" id="projectList">
-                    </div>
+                    <!-- Project cards will be injected here by JavaScript -->
+                </div>
                 <div class="footer">
                     <button id="showCreateModalBtn" class="create-project-btn">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 13H5a1 1 0 010-2h14a1 1 0 010 2zM13 19V5a1 1 0 012 0v14a1 1 0 01-2 0z"/>
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13H5a1 1 0 010-2h14a1 1 0 010 2zM13 19V5a1 1 0 012 0v14a1 1 0 01-2 0z"/></svg>
                         Створити новий проєкт
                     </button>
                 </div>
             `;
-            // Re-attach event listeners after content is rendered
             const showCreateModalBtn = document.getElementById('showCreateModalBtn');
-            showCreateModalBtn.addEventListener('click', () => {
+            showCreateModalBtn.addEventListener('click', async () => {
+                const projectsCount = (await db.collection('projects').where('userId', '==', auth.currentUser.uid).where('status', '==', 'active').get()).size;
+                if (projectsCount >= projectsLimit && projectsLimit !== Infinity) {
+                    showMessage("Ліміт проєктів", `Ви досягли ліміту проєктів (${projectsLimit}) для вашого тарифного плану. Щоб створити більше проєктів, будь ласка, оновіть свій тариф.`);
+                    return;
+                }
                 isEditing = false;
                 editingProjectId = null;
                 modalTitle.textContent = "Створити новий проєкт";
@@ -1276,15 +1445,16 @@
                 modalStatusContent.style.display = 'none';
                 projectModalOverlay.style.display = 'flex';
             });
-            fetchProjects(userId);
+            await checkProjectsStatusAndRender(userId);
         }
-
+        
         function renderTariffPage() {
             const tariffPlansHtml = tariffPlans.map(plan => {
                 const isCurrentPlan = plan.id === currentTariffPlan;
                 const buttonText = isCurrentPlan ? 'Поточний тариф' : 'Оновити тариф';
                 const buttonClass = isCurrentPlan ? 'subscribe-btn current-plan-btn' : 'subscribe-btn';
                 const featuresHtml = plan.features.map(feature => `<li>${feature}</li>`).join('');
+                const isDisabled = isCurrentPlan || (plan.id === 'basic' && currentTariffPlan !== 'basic');
 
                 return `
                     <div class="tariff-card">
@@ -1293,7 +1463,7 @@
                         <ul>
                             ${featuresHtml}
                         </ul>
-                        <button class="${buttonClass}" data-plan-id="${plan.id}" ${isCurrentPlan ? 'disabled' : ''}>${buttonText}</button>
+                        <button class="${buttonClass}" data-plan-id="${plan.id}" ${isDisabled ? 'disabled' : ''}>${buttonText}</button>
                     </div>
                 `;
             }).join('');
@@ -1311,6 +1481,14 @@
                     const planName = tariffPlans.find(p => p.id === planId).name;
                     
                     if (auth.currentUser) {
+                        const projectsCount = (await db.collection('projects').where('userId', '==', auth.currentUser.uid).where('status', '==', 'active').get()).size;
+                        const newLimit = tariffPlans.find(p => p.id === planId).limit;
+                        
+                        if (projectsCount > newLimit) {
+                            showSelectionModal(auth.currentUser.uid, (await db.collection('projects').where('userId', '==', auth.currentUser.uid).get()).docs.map(doc => ({ id: doc.id, ...doc.data() })), newLimit, `Кількість ваших проєктів (${projectsCount}) перевищує ліміт тарифу "${planName}" (${newLimit}). Будь ласка, оберіть ${newLimit} проєкт${getPluralForm(newLimit, 'а', 'и', 'ів')} для збереження. Інші будуть заблоковані.`);
+                            return;
+                        }
+                        
                         await updateUserTariff(auth.currentUser.uid, planId);
                         showMessage("Тариф змінено!", `Ваш тарифний план успішно оновлено на "${planName}".`);
                         renderTariffPage();
@@ -1371,18 +1549,11 @@
                         <li>**Видалити проєкт**: Видаляє проєкт назавжди. Будьте уважні, цю дію неможливо скасувати.</li>
                     </ul>
 
-                    <h3>2. Тарифи</h3>
-                    <p>У розділі **Тарифи** ви можете ознайомитись з доступними планами та вибрати той, що найкраще підходить для ваших потреб. Кожен тариф має свої ліміти на кількість проєктів та набір функцій.</p>
-                    <ul>
-                        <li>**Базовий**: Безкоштовний тариф, ідеальний для невеликих проєктів.</li>
-                        <li>**Професійний**, **Бізнес**, **Корпоративний**: Надають розширені можливості, більшу кількість проєктів та пріоритетну підтримку.</li>
-                    </ul>
-
                     <h3>3. Контакти</h3>
                     <p>Якщо у вас виникли будь-які питання або вам потрібна допомога, зверніться до нас через розділ **Контакти**. Ви знайдете там інформацію для зв'язку з технічною підтримкою та відділом продажів.</p>
 
                     <h3>4. Що далі?</h3>
-                    <p>Ми постійно працюємо над розширенням функціонала Weebwe CMS. Найближчим часом буде реалізовано повну панель керування проєктами, інтеграцію з різними модулями та багато іншого. Слідкуйте за оновленнями!</p>
+                    <p>Ми постійно працюємо над розширенням функціонала Weebwe CMS. Найближчим часом буде реалізовано повна панель керування проєктами, інтеграцію з різними модулями та багато іншого. Слідкуйте за оновленнями!</p>
                 </div>
             `;
         }
@@ -1412,15 +1583,18 @@
             messageText.textContent = message;
             messageModalOverlay.style.display = 'flex';
             
-            const newCloseBtn = messageModalCloseBtn.cloneNode(true);
-            messageModalCloseBtn.parentNode.replaceChild(newCloseBtn, messageModalCloseBtn);
-            
-            newCloseBtn.addEventListener('click', () => {
-                messageModalOverlay.style.display = 'none';
-                if (callback) {
-                    callback();
-                }
-            });
+            const closeButton = document.getElementById('messageModalCloseBtn');
+            if (closeButton) {
+                const newCloseButton = closeButton.cloneNode(true);
+                closeButton.parentNode.replaceChild(newCloseButton, closeButton);
+                
+                newCloseButton.addEventListener('click', () => {
+                    messageModalOverlay.style.display = 'none';
+                    if (callback) {
+                        callback();
+                    }
+                });
+            }
         }
         
         // Modal for delete confirmation
@@ -1469,9 +1643,9 @@
                 if (isEditing) {
                     await updateProject(user.uid, editingProjectId, projectName, projectDescription, projectImage);
                 } else {
-                    const projectsCount = (await db.collection('projects').where('userId', '==', user.uid).get()).size;
-                    if (projectsCount >= projectsLimit) {
-                        throw new Error('Ви досягли ліміту проєктів для вашого тарифного плану. Щоб створити більше проєктів, будь ласка, оновіть свій тариф.');
+                    const projectsCount = (await db.collection('projects').where('userId', '==', user.uid).where('status', '==', 'active').get()).size;
+                    if (projectsCount >= projectsLimit && projectsLimit !== Infinity) {
+                        throw new Error(`Ви досягли ліміту проєктів (${projectsLimit}) для вашого тарифного плану. Щоб створити більше проєктів, будь ласка, оновіть свій тариф.`);
                     }
                     await createProject(user.uid, projectName, projectDescription, projectImage);
                 }
@@ -1509,7 +1683,9 @@
                 name: name,
                 description: description,
                 logoUrl: imageUrl,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                deletionDate: null
             });
         }
         
@@ -1585,9 +1761,10 @@
             
             projectsListener = projectsRef.onSnapshot(snapshot => {
                 projectListContainer.innerHTML = '';
-                projectsCountSpan.textContent = `${snapshot.size}/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
+                const activeProjectsCount = snapshot.docs.filter(doc => doc.data().status === 'active').length;
+                projectsCountSpan.textContent = `${activeProjectsCount}/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
                 
-                if (snapshot.size >= projectsLimit && projectsLimit !== Infinity) {
+                if (activeProjectsCount >= projectsLimit && projectsLimit !== Infinity) {
                     createProjectBtn.disabled = true;
                 } else {
                     createProjectBtn.disabled = false;
@@ -1600,39 +1777,21 @@
                     projectListContainer.appendChild(noProjectsMessage);
                     return;
                 }
+                
+                const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-                snapshot.forEach(doc => {
-                    const project = doc.data();
-                    const projectId = doc.id;
-                    const projectCard = document.createElement('div');
-                    projectCard.className = 'project-card';
-                    projectCard.innerHTML = `
-                        <div class="project-card-header">
-                            <img src="${project.logoUrl || 'https://via.placeholder.com/50'}" alt="${project.name} logo" class="project-logo">
-                            <div>
-                                <h4 style="margin: 0;">${project.name}</h4>
-                                <p style="margin: 5px 0 0; font-size: 14px; color: var(--light-text);">${project.description}</p>
-                            </div>
-                        </div>
-                        <div class="project-actions">
-                            <button onclick="openEditModal('${projectId}', '${project.name}', '${project.description}')" class="edit-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 7.04c.39-.39.39-1.03 0-1.42l-2.34-2.34c-.39-.39-1.03-.39-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.84zM3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>
-                                Редагувати
-                            </button>
-                            <button onclick="openProject('${projectId}')" class="enter-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                                Увійти
-                            </button>
-                            <button onclick="buildProject('${projectId}')" class="build-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                                Зібрати
-                            </button>
-                            <button onclick="showDeleteConfirm('${projectId}', '${project.name}')" class="delete-btn">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 19a2 2 0 01-2 2H8a2 2 0 01-2-2V7H4V5h4V4a2 2 0 012-2h4a2 2 0 012 2v1h4v2h-2zM8 7v12h8V7zm2-3v1h4V4zM9 9h2v8H9zM13 9h2v8h-2z"/></svg>
-                                Видалити
-                            </button>
-                        </div>
-                    `;
+                // Сортування: спочатку активні, потім на видалення
+                projects.sort((a, b) => {
+                    if (a.status === 'active' && b.status !== 'active') return -1;
+                    if (a.status !== 'active' && b.status === 'active') return 1;
+                    if (a.status === 'to-delete' && b.status === 'to-delete') {
+                        return a.deletionDate.toDate() - b.deletionDate.toDate();
+                    }
+                    return 0;
+                });
+
+                projects.forEach(project => {
+                    const projectCard = createProjectCardElement(project, project.status, false); // No selection control on main page
                     projectListContainer.appendChild(projectCard);
                 });
             }, error => {
@@ -1640,6 +1799,71 @@
             });
         }
         
+        function createProjectCardElement(project, status, isSelectionModal = false) {
+            const projectCard = document.createElement('div');
+            projectCard.className = 'project-card';
+            if (status !== 'active' && !isSelectionModal) {
+                projectCard.classList.add('inactive');
+            }
+            
+            let daysUntilDeletion = 0;
+            if (project.deletionDate) {
+                const deletionTime = project.deletionDate.toDate().getTime();
+                const now = new Date().getTime();
+                daysUntilDeletion = Math.max(0, Math.ceil((deletionTime - now) / (1000 * 60 * 60 * 24)));
+            }
+
+            const actionButtons = isSelectionModal 
+                ? '' // Видаляємо всі кнопки дій у модальному вікні вибору
+                : (status === 'active' 
+                    ? `
+                        <div class="project-actions">
+                            <button onclick="openEditModal('${project.id}', '${project.name}', '${project.description}')" class="edit-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 7.04c.39-.39.39-1.03 0-1.42l-2.34-2.34c-.39-.39-1.03-.39-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.84zM3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/></svg>
+                                Редагувати
+                            </button>
+                            <button onclick="openProject('${project.id}')" class="enter-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                                Увійти
+                            </button>
+                            <button onclick="buildProject('${project.id}')" class="build-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                Зібрати
+                            </button>
+                            <button onclick="showDeleteConfirm('${project.id}', '${project.name}')" class="delete-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18 19a2 2 0 01-2 2H8a2 2 0 01-2-2V7H4V5h4V4a2 2 0 012-2h4a2 2 0 012 2v1h4v2h-2zM8 7v12h8V7zm2-3v1h4V4zM9 9h2v8H9zM13 9h2v8h-2z"/></svg>
+                                Видалити
+                            </button>
+                        </div>
+                    `
+                    : `
+                        <p style="font-style: italic; color: var(--error-red);">Цей проєкт заблоковано і буде видалений через ${daysUntilDeletion} ${getPluralForm(daysUntilDeletion, 'день', 'дні', 'днів')}. Оновіть тариф, щоб його зберегти.</p>
+                        <div class="project-actions">
+                            <button onclick="activateProject('${project.id}')" class="activate-btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                Активувати
+                            </button>
+                        </div>
+                    `);
+            
+            projectCard.innerHTML = `
+                <div class="project-card-header">
+                    <img src="${project.logoUrl || 'https://via.placeholder.com/50'}" alt="${project.name} logo" class="project-logo">
+                    <div>
+                        <h4 style="margin: 0;">${project.name}</h4>
+                        <p style="margin: 5px 0 0; font-size: 14px; color: var(--light-text);">${project.description}</p>
+                    </div>
+                </div>
+                ${actionButtons}
+                ${isSelectionModal ? `
+                    <div class="selection-control">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                    </div>` : ''}
+            `;
+            
+            return projectCard;
+        }
+
         function openEditModal(projectId, name, description) {
             isEditing = true;
             editingProjectId = projectId;
@@ -1650,6 +1874,30 @@
             modalFormContent.style.display = 'flex';
             modalStatusContent.style.display = 'none';
             projectModalOverlay.style.display = 'flex';
+        }
+        
+        async function activateProject(projectId) {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const projectsCount = (await db.collection('projects').where('userId', '==', user.uid).where('status', '==', 'active').get()).size;
+            
+            if (projectsCount >= projectsLimit && projectsLimit !== Infinity) {
+                const message = `Ви досягли ліміту активних проєктів (${projectsLimit}) для вашого тарифного плану. Щоб активувати цей проєкт, будь ласка, оберіть проєкти, які хочете залишити.`;
+                showSelectionModal(user.uid, (await db.collection('projects').where('userId', '==', user.uid).get()).docs.map(doc => ({ id: doc.id, ...doc.data() })), projectsLimit, message);
+                return;
+            }
+
+            try {
+                await db.collection('projects').doc(projectId).update({
+                    status: 'active',
+                    deletionDate: null
+                });
+                showMessage("Проєкт активовано", "Ваш проєкт успішно активовано!");
+            } catch (error) {
+                console.error("Error activating project:", error);
+                showMessage("Помилка", "Не вдалося активувати проєкт.");
+            }
         }
 
         function openProject(projectId) {
