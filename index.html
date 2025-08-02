@@ -149,8 +149,9 @@
         }
         .cms-info {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
         }
         .cms-title {
             font-size: 18px;
@@ -160,6 +161,26 @@
         .cms-plan {
             font-size: 14px;
             color: var(--light-text);
+        }
+        .plan-expiry {
+            font-size: 12px;
+            color: var(--light-text);
+            font-style: italic;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .test-buttons button {
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .test-buttons button:hover {
+            background-color: #e0e0e0;
         }
 
         .menu {
@@ -321,6 +342,10 @@
             width: 20px;
             height: 20px;
             fill: var(--white);
+        }
+        .create-project-btn[disabled] {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
 
         .modal-overlay {
@@ -640,6 +665,22 @@
             box-sizing: border-box;
         }
 
+        /* Modal для вибору проєкту */
+        .select-project-modal .project-list {
+            display: flex;
+            flex-direction: column;
+        }
+        .select-project-modal .project-card {
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .select-project-modal .project-card.selected {
+            border: 2px solid var(--primary-blue);
+        }
+        .select-project-modal .project-card:hover {
+            background-color: var(--secondary-blue);
+        }
+
         @media (max-width: 768px) {
             .project-list {
                 grid-template-columns: 1fr;
@@ -649,9 +690,12 @@
                 max-width: 300px;
             }
             .cms-info {
-                display: flex; /* Always display on mobile */
+                display: flex;
                 flex-direction: column;
                 align-items: flex-start;
+            }
+            .test-buttons {
+                display: none;
             }
         }
     </style>
@@ -683,9 +727,13 @@
                 <div class="cms-info">
                     <span class="cms-title">Weebwe CMS</span>
                     <span id="userPlanHeader" class="cms-plan"></span>
+                    <span id="planExpiryDate" class="plan-expiry"></span>
                 </div>
             </div>
-            <div></div>
+            <div class="test-buttons">
+                <button id="finishTariffBtn">Закінчити тариф</button>
+                <button id="extendTariffBtn">Продовжити тариф</button>
+            </div>
         </header>
 
         <div class="menu" id="sideMenu">
@@ -757,6 +805,18 @@
         </div>
     </div>
 
+    <div class="modal-overlay select-project-modal" id="selectProjectModalOverlay">
+        <div class="modal">
+            <h3 id="selectProjectTitle" style="text-align: center;">Оберіть проєкт для збереження</h3>
+            <p id="selectProjectText" style="text-align: center;">Термін дії вашого тарифу закінчився. Ви можете залишити лише один проєкт. Інші проєкти будуть видалені через 10 днів, якщо ви не продовжите тариф.</p>
+            <div class="project-list" id="selectProjectList">
+                </div>
+            <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+                <button id="saveSelectedProjectBtn" class="contact-btn" disabled>Зберегти вибраний проєкт</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -794,12 +854,15 @@
         const userNameSpan = document.getElementById('userName');
         const userAvatarImg = document.getElementById('userAvatar');
         const userPlanHeader = document.getElementById('userPlanHeader');
+        const planExpiryDateSpan = document.getElementById('planExpiryDate');
         const mainContent = document.getElementById('mainContent');
         const mainMenuItem = document.getElementById('mainMenuItem');
         const tariffsMenuItem = document.getElementById('tariffsMenuItem');
         const aboutMenuItem = document.getElementById('aboutMenuItem');
         const contactsMenuItem = document.getElementById('contactsMenuItem');
         const docsMenuItem = document.getElementById('docsMenuItem');
+        const finishTariffBtn = document.getElementById('finishTariffBtn');
+        const extendTariffBtn = document.getElementById('extendTariffBtn');
 
         const projectModalOverlay = document.getElementById('projectModalOverlay');
         const projectForm = document.getElementById('projectForm');
@@ -821,12 +884,17 @@
         const deleteConfirmText = document.getElementById('deleteConfirmText');
         const deleteConfirmCancelBtn = document.getElementById('deleteConfirmCancelBtn');
         const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+        const selectProjectModalOverlay = document.getElementById('selectProjectModalOverlay');
+        const selectProjectList = document.getElementById('selectProjectList');
+        const saveSelectedProjectBtn = document.getElementById('saveSelectedProjectBtn');
 
         let isEditing = false;
         let editingProjectId = null;
         let projectsLimit = 1;
         let projectsListener = null;
-        let currentTariffPlan = 'basic'; // За замовчуванням
+        let currentTariffPlan = 'basic';
+        let expiryDate = null;
+        let selectedProjectToKeep = null;
 
         // Тарифні плани
         const tariffPlans = [
@@ -835,28 +903,32 @@
                 name: 'Базовий',
                 price: 'Безкоштовно',
                 features: ['До 1 проєкту', 'Основні інструменти', 'Доступ до документації'],
-                limit: 1
+                limit: 1,
+                isFree: true
             },
             {
                 id: 'professional',
                 name: 'Професійний',
                 price: '$10/місяць',
                 features: ['До 10 проєктів', 'Розширені інструменти SEO', 'Додаткові модулі', 'Пріоритетна підтримка'],
-                limit: 10
+                limit: 10,
+                isFree: false
             },
             {
                 id: 'business',
                 name: 'Бізнес',
                 price: '$30/місяць',
                 features: ['До 30 проєктів', 'Підключення кастомних модулів', 'VIP-підтримка 24/7', 'Особистий менеджер'],
-                limit: 30
+                limit: 30,
+                isFree: false
             },
             {
                 id: 'corporate',
                 name: 'Корпоративний',
                 price: '$100/місяць',
                 features: ['Необмежена кількість проєктів', 'Кастомна розробка модулів', 'Розподілене сховище', 'Персональний технічний спеціаліст'],
-                limit: Infinity
+                limit: Infinity,
+                isFree: false
             }
         ];
 
@@ -891,12 +963,10 @@
                 userNameSpan.textContent = user.displayName;
                 userAvatarImg.src = user.photoURL;
 
-                // Перевіряємо та створюємо/оновлюємо документ користувача в Firestore
                 await ensureUserDocument(user);
-                
-                // Завантажуємо тарифний план користувача
                 await loadUserTariff(user.uid);
-
+                await handleExpiredTariff(user.uid);
+                
                 renderMainPage(user.uid);
             } else {
                 if (splashScreen.style.display === 'none') {
@@ -914,6 +984,43 @@
         signOutBtn.addEventListener('click', () => {
             auth.signOut();
         });
+
+        finishTariffBtn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (user) {
+                await simulateTariffExpiration(user.uid);
+                await loadUserTariff(user.uid);
+                await handleExpiredTariff(user.uid);
+                renderMainPage(user.uid);
+            }
+        });
+        
+        extendTariffBtn.addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (user) {
+                await extendTariff(user.uid);
+                await loadUserTariff(user.uid);
+                showMessage("Тариф продовжено", `Ваш тарифний план подовжено ще на 30 днів.`);
+                renderMainPage(user.uid);
+            }
+        });
+        
+        async function simulateTariffExpiration(userId) {
+            const userRef = db.collection('users').doc(userId);
+            const pastDate = new Date();
+            pastDate.setDate(pastDate.getDate() - 1);
+            await userRef.update({ expiryDate: pastDate });
+        }
+        
+        async function extendTariff(userId) {
+            const userRef = db.collection('users').doc(userId);
+            let newExpiryDate = new Date();
+            if (expiryDate && expiryDate > new Date()) {
+                newExpiryDate = expiryDate;
+            }
+            newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+            await userRef.update({ expiryDate: newExpiryDate, tariffPlan: currentTariffPlan });
+        }
         
         async function ensureUserDocument(user) {
             const userRef = db.collection('users').doc(user.uid);
@@ -921,7 +1028,8 @@
             if (!doc.exists) {
                 await userRef.set({
                     email: user.email,
-                    tariffPlan: 'basic'
+                    tariffPlan: 'basic',
+                    expiryDate: null
                 });
             }
         }
@@ -929,23 +1037,138 @@
         async function loadUserTariff(userId) {
             const userDoc = await db.collection('users').doc(userId).get();
             if (userDoc.exists) {
-                currentTariffPlan = userDoc.data().tariffPlan;
+                const data = userDoc.data();
+                currentTariffPlan = data.tariffPlan || 'basic';
+                expiryDate = data.expiryDate ? data.expiryDate.toDate() : null;
             } else {
                 currentTariffPlan = 'basic';
+                expiryDate = null;
             }
-            updateProjectsLimit();
-            const planName = tariffPlans.find(plan => plan.id === currentTariffPlan).name;
-            userPlanHeader.textContent = `Тариф: ${planName}`;
+            
+            updateUIWithTariff();
         }
         
-        async function updateUserTariff(userId, planId) {
-            await db.collection('users').doc(userId).update({
-                tariffPlan: planId
-            });
-            currentTariffPlan = planId;
-            const planName = tariffPlans.find(plan => plan.id === currentTariffPlan).name;
-            userPlanHeader.textContent = `Тариф: ${planName}`;
+        function updateUIWithTariff() {
+            const plan = tariffPlans.find(p => p.id === currentTariffPlan);
+            userPlanHeader.textContent = `Тариф: ${plan.name}`;
             updateProjectsLimit();
+
+            if (expiryDate) {
+                const now = new Date();
+                const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+                if (daysLeft > 0) {
+                    planExpiryDateSpan.textContent = `До закінчення: ${daysLeft} ${getPluralForm(daysLeft, 'день', 'дні', 'днів')}`;
+                    planExpiryDateSpan.style.display = 'block';
+                } else {
+                    planExpiryDateSpan.textContent = `Термін дії закінчився`;
+                    planExpiryDateSpan.style.display = 'block';
+                }
+            } else {
+                planExpiryDateSpan.style.display = 'none';
+            }
+        }
+
+        async function updateUserTariff(userId, planId) {
+            const userRef = db.collection('users').doc(userId);
+            const plan = tariffPlans.find(p => p.id === planId);
+            
+            let updateData = { tariffPlan: planId };
+            if (!plan.isFree) {
+                const now = new Date();
+                let newExpiryDate = now;
+                if (expiryDate && expiryDate > now) {
+                    newExpiryDate = expiryDate;
+                }
+                newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+                updateData.expiryDate = newExpiryDate;
+            } else {
+                updateData.expiryDate = null;
+            }
+
+            await userRef.update(updateData);
+            currentTariffPlan = planId;
+            expiryDate = updateData.expiryDate;
+            updateUIWithTariff();
+        }
+
+        async function handleExpiredTariff(userId) {
+            if (expiryDate && expiryDate < new Date()) {
+                const userRef = db.collection('users').doc(userId);
+                const userDoc = await userRef.get();
+                const oldTariff = userDoc.data().tariffPlan;
+
+                if (oldTariff !== 'basic') {
+                    await userRef.update({
+                        tariffPlan: 'basic',
+                        expiryDate: null
+                    });
+                    
+                    currentTariffPlan = 'basic';
+                    expiryDate = null;
+                    updateUIWithTariff();
+
+                    const projectsSnapshot = await db.collection('projects').where('userId', '==', userId).get();
+                    if (projectsSnapshot.size > 1) {
+                        showSelectProjectModal(projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    } else {
+                        showMessage("Тариф закінчився", "Термін дії вашого тарифу закінчився. Ви були переведені на базовий тариф.");
+                    }
+                }
+            } else if (expiryDate && expiryDate < addDays(new Date(), 10) && expiryDate > new Date()) {
+                showMessage("Увага", `Термін дії вашого тарифу скоро закінчиться. Будь ласка, оновіть свій план.`, () => {
+                    renderTariffPage();
+                });
+            }
+        }
+
+        async function showSelectProjectModal(projects) {
+            selectProjectList.innerHTML = '';
+            selectProjectModalOverlay.style.display = 'flex';
+            
+            selectedProjectToKeep = null;
+            saveSelectedProjectBtn.disabled = true;
+
+            projects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'project-card';
+                projectCard.dataset.projectId = project.id;
+                projectCard.innerHTML = `
+                    <div class="project-card-header">
+                        <img src="${project.logoUrl || 'https://via.placeholder.com/50'}" alt="${project.name} logo" class="project-logo">
+                        <div>
+                            <h4 style="margin: 0;">${project.name}</h4>
+                            <p style="margin: 5px 0 0; font-size: 14px; color: var(--light-text);">${project.description}</p>
+                        </div>
+                    </div>
+                `;
+                projectCard.addEventListener('click', () => {
+                    document.querySelectorAll('.project-card').forEach(card => card.classList.remove('selected'));
+                    projectCard.classList.add('selected');
+                    selectedProjectToKeep = project.id;
+                    saveSelectedProjectBtn.disabled = false;
+                });
+                selectProjectList.appendChild(projectCard);
+            });
+        }
+        
+        saveSelectedProjectBtn.addEventListener('click', async () => {
+            if (selectedProjectToKeep) {
+                await deleteOtherProjects(auth.currentUser.uid, selectedProjectToKeep);
+                selectProjectModalOverlay.style.display = 'none';
+                showMessage("Проєкти збережено", "Решта ваших проєктів буде видалено протягом 10 днів. Ви можете відновити їх, оновивши свій тариф.");
+                renderMainPage(auth.currentUser.uid);
+            }
+        });
+
+        async function deleteOtherProjects(userId, projectIdToKeep) {
+            const projectsRef = db.collection('projects').where('userId', '==', userId).where(firebase.firestore.FieldPath.documentId(), '!=', projectIdToKeep);
+            const projectsSnapshot = await projectsRef.get();
+            
+            const batch = db.batch();
+            projectsSnapshot.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
         }
 
         // --- Menu Logic ---
@@ -1011,6 +1234,18 @@
             }
         }
         
+        function getPluralForm(number, one, few, many) {
+            if (number % 10 === 1 && number % 100 !== 11) return one;
+            if (number % 10 >= 2 && number % 10 <= 4 && (number % 100 < 10 || number % 100 >= 20)) return few;
+            return many;
+        }
+
+        function addDays(date, days) {
+            const result = new Date(date);
+            result.setDate(result.getDate() + days);
+            return result;
+        }
+
         // --- Dynamic Page Rendering ---
         function renderMainPage(userId) {
             mainContent.innerHTML = `
@@ -1078,7 +1313,7 @@
                     if (auth.currentUser) {
                         await updateUserTariff(auth.currentUser.uid, planId);
                         showMessage("Тариф змінено!", `Ваш тарифний план успішно оновлено на "${planName}".`);
-                        renderTariffPage(); // Перемалювати сторінку, щоб оновити кнопки
+                        renderTariffPage();
                     }
                 });
             });
@@ -1234,8 +1469,8 @@
                 if (isEditing) {
                     await updateProject(user.uid, editingProjectId, projectName, projectDescription, projectImage);
                 } else {
-                    const projectListContainer = document.getElementById('projectList');
-                    if (projectListContainer.querySelectorAll('.project-card').length >= projectsLimit) {
+                    const projectsCount = (await db.collection('projects').where('userId', '==', user.uid).get()).size;
+                    if (projectsCount >= projectsLimit) {
                         throw new Error('Ви досягли ліміту проєктів для вашого тарифного плану. Щоб створити більше проєктів, будь ласка, оновіть свій тариф.');
                     }
                     await createProject(user.uid, projectName, projectDescription, projectImage);
@@ -1346,10 +1581,17 @@
             
             const projectListContainer = document.getElementById('projectList');
             const projectsCountSpan = document.getElementById('projectsCount');
-
+            const createProjectBtn = document.getElementById('showCreateModalBtn');
+            
             projectsListener = projectsRef.onSnapshot(snapshot => {
                 projectListContainer.innerHTML = '';
                 projectsCountSpan.textContent = `${snapshot.size}/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
+                
+                if (snapshot.size >= projectsLimit && projectsLimit !== Infinity) {
+                    createProjectBtn.disabled = true;
+                } else {
+                    createProjectBtn.disabled = false;
+                }
 
                 if (snapshot.size === 0) {
                     const noProjectsMessage = document.createElement('p');
