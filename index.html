@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weebwe CMS</title>
+    <link rel="icon" href="img/weecms.png">
+    <style>
+        :root {
+            --primary-blue: #0094fe;
+            --secondary-blue: #e6f5ff;
+            --white: #ffffff;
+            --dark-text: #333333;
+            --light-text: #666666;
+            --error-red: #d32f2f;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--white);
+            color: var(--dark-text);
+        }
+
+        .splash-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--white);
+            text-align: center;
+            transition: opacity 0.5s ease-out;
+            position: relative;
+        }
+
+        .logo-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+        }
+
+        .logo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%;
+            max-height: 100%;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .progress-bar-container {
+            width: 300px;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: var(--primary-blue);
+            border-radius: 4px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .copyright {
+            position: absolute;
+            bottom: 20px;
+            font-size: 12px;
+            color: var(--light-text);
+        }
+
+        .auth-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100vh;
+        }
+        
+        .auth-screen-logo {
+            margin-bottom: 30px;
+            max-width: 150px;
+        }
+        
+        .auth-screen button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .auth-screen button:hover {
+            background-color: #007bbd;
+        }
+
+        .main-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f4f7f9;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: var(--white);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .hamburger-menu {
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .logo-cms {
+            max-width: 40px;
+        }
+
+        .menu {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 250px;
+            height: 100%;
+            background-color: var(--white);
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: left 0.3s ease-in-out;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 1000;
+        }
+
+        .menu.open {
+            left: 0;
+        }
+
+        .menu-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+
+        .menu-item {
+            padding: 10px;
+            cursor: pointer;
+            color: var(--dark-text);
+            text-decoration: none;
+            display: block;
+        }
+
+        .menu-item:hover {
+            background-color: var(--secondary-blue);
+            border-radius: 5px;
+        }
+        
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .projects-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .project-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .project-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .project-card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .project-logo {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        
+        .project-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: auto;
+        }
+        
+        .project-actions button {
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: transparent;
+            cursor: pointer;
+        }
+        
+        .project-actions button:hover {
+            background-color: var(--secondary-blue);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal {
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .modal-content-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-content-status {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 20px;
+        }
+        
+        .modal-status-text.success {
+            color: var(--primary-blue);
+            font-weight: bold;
+        }
+        
+        .modal-status-text.error {
+            color: var(--error-red);
+            font-weight: bold;
+        }
+
+        .modal input, .modal textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #createProjectBtn, #submitFormBtn {
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+        
+        #clearFormBtn {
+            background-color: #f0f0f0;
+            color: var(--dark-text);
+        }
+        
+        #closeModalBtn {
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+
+        .footer {
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--light-text);
+            background-color: var(--white);
+            border-top: 1px solid #e0e0e0;
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .project-list {
+                grid-template-columns: 1fr;
+            }
+            .menu {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="splash-screen" id="splashScreen">
+        <div class="logo-container">
+            <img src="img/weebwe.png" alt="Weebwe Logo" class="logo" id="logoWeebwe">
+            <img src="img/weecms.png" alt="CMS Logo" class="logo" id="logoCms" style="opacity: 0;">
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="copyright">© 2024 Weebwe</div>
+    </div>
+
+    <div class="auth-screen" id="authScreen">
+        <img src="img/weecms.png" alt="CMS Logo" class="auth-screen-logo">
+        <button id="googleSignInBtn">Увійти за допомогою Google</button>
+        <div class="copyright" style="position: absolute; bottom: 20px;">© 2024 Weebwe</div>
+    </div>
+
+    <div class="main-container" id="mainContainer">
+        <header>
+            <div class="hamburger-menu" id="hamburgerMenu">☰</div>
+            <img src="img/weecms.png" alt="CMS Logo" class="logo-cms">
+            <div></div>
+        </header>
+
+        <div class="menu" id="sideMenu">
+            <div class="menu-header">
+                <img id="userAvatar" class="avatar" src="">
+                <div class="user-info">
+                    <span id="userName" style="font-weight: bold;"></span>
+                    <span id="userPlan" style="font-size: 12px; color: var(--light-text);">Тариф: Базовий</span>
+                </div>
+            </div>
+            <a href="#" class="menu-item">Головна сторінка</a>
+            <a href="#" class="menu-item">Модулі</a>
+            <a href="#" class="menu-item">Тарифи</a>
+            <a href="#" class="menu-item">Про проєкт</a>
+            <a href="#" class="menu-item">Документація</a>
+            <a href="#" class="menu-item" id="signOutBtn" style="color: var(--primary-blue);">Вийти</a>
+            <div class="copyright" style="position: static; text-align: center; margin-top: 20px;">© 2024 Weebwe</div>
+        </div>
+
+        <div class="main-content">
+            <div class="projects-header">
+                <h2 style="margin: 0;">Мої проєкти</h2>
+                <span id="projectsCount">0/10 доступно</span>
+            </div>
+            <div class="project-list" id="projectList">
+                </div>
+            <div class="footer">
+                <button id="showCreateModalBtn">Створити новий проєкт</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="projectModalOverlay">
+        <div class="modal">
+            <h3 id="modalTitle">Створити новий проєкт</h3>
+            
+            <div class="modal-content-form" id="modalFormContent">
+                <form id="projectForm">
+                    <input type="file" id="projectImageInput" accept="image/*">
+                    <input type="text" id="projectNameInput" placeholder="Назва проєкту" required>
+                    <textarea id="projectDescriptionInput" placeholder="Короткий опис" required></textarea>
+                    <div class="modal-actions">
+                        <button type="button" id="clearFormBtn">Очистити</button>
+                        <button type="submit" id="submitFormBtn">Створити проєкт</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-content-status" id="modalStatusContent">
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="modalProgressBar"></div>
+                </div>
+                <p id="modalStatusText" class="modal-status-text"></p>
+                <button id="closeModalBtn" style="display: none;">ОК</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+    <script>
+        // Your Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCL2hyJagh8yZagfdgNY8CKBH3qnEoPMDY",
+            authDomain: "wee-cms-cfb94.firebaseapp.com",
+            projectId: "wee-cms-cfb94",
+            storageBucket: "wee-cms-cfb94.firebasestorage.app",
+            messagingSenderId: "725583199844",
+            appId: "1:725583199844:web:b66b1bec7f4060c8016971",
+            measurementId: "G-RS92ZEH33G"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // DOM Elements
+        const splashScreen = document.getElementById('splashScreen');
+        const logoWeebwe = document.getElementById('logoWeebwe');
+        const logoCms = document.getElementById('logoCms');
+        const progressBar = document.getElementById('progressBar');
+        const authScreen = document.getElementById('authScreen');
+        const googleSignInBtn = document.getElementById('googleSignInBtn');
+        const mainContainer = document.getElementById('mainContainer');
+        const hamburgerMenu = document.getElementById('hamburgerMenu');
+        const sideMenu = document.getElementById('sideMenu');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const userNameSpan = document.getElementById('userName');
+        const userAvatarImg = document.getElementById('userAvatar');
+        const showCreateModalBtn = document.getElementById('showCreateModalBtn');
+        const projectModalOverlay = document.getElementById('projectModalOverlay');
+        const projectForm = document.getElementById('projectForm');
+        const projectNameInput = document.getElementById('projectNameInput');
+        const projectDescriptionInput = document.getElementById('projectDescriptionInput');
+        const projectImageInput = document.getElementById('projectImageInput');
+        const submitFormBtn = document.getElementById('submitFormBtn');
+        const clearFormBtn = document.getElementById('clearFormBtn');
+        const projectListContainer = document.getElementById('projectList');
+        const modalTitle = document.getElementById('modalTitle');
+        const projectsCountSpan = document.getElementById('projectsCount');
+        const modalFormContent = document.getElementById('modalFormContent');
+        const modalStatusContent = document.getElementById('modalStatusContent');
+        const modalProgressBar = document.getElementById('modalProgressBar');
+        const modalStatusText = document.getElementById('modalStatusText');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        let isEditing = false;
+        let editingProjectId = null;
+        let projectsLimit = 10;
+
+        // --- Splash Screen & Initial Loading ---
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 10;
+            progressBar.style.width = `${progress}%`;
+            if (progress >= 50) {
+                logoWeebwe.style.opacity = '0';
+                logoCms.style.opacity = '1';
+            }
+            if (progress >= 100) {
+                clearInterval(progressInterval);
+                setTimeout(() => {
+                    splashScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        splashScreen.style.display = 'none';
+                        if (!auth.currentUser) {
+                            authScreen.style.display = 'flex';
+                        }
+                    }, 500);
+                }, 500);
+            }
+        }, 500);
+
+        // --- Authentication ---
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                authScreen.style.display = 'none';
+                mainContainer.style.display = 'flex';
+                userNameSpan.textContent = user.displayName;
+                userAvatarImg.src = user.photoURL;
+                fetchProjects(user.uid);
+            } else {
+                if (splashScreen.style.display === 'none') {
+                    authScreen.style.display = 'flex';
+                }
+                mainContainer.style.display = 'none';
+            }
+        });
+
+        googleSignInBtn.addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider);
+        });
+
+        signOutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // --- Menu Logic ---
+        hamburgerMenu.addEventListener('click', () => {
+            sideMenu.classList.toggle('open');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!sideMenu.contains(e.target) && !hamburgerMenu.contains(e.target) && sideMenu.classList.contains('open')) {
+                sideMenu.classList.remove('open');
+            }
+        });
+
+        // --- Project Modal Logic ---
+        showCreateModalBtn.addEventListener('click', () => {
+            isEditing = false;
+            editingProjectId = null;
+            modalTitle.textContent = "Створити новий проєкт";
+            submitFormBtn.textContent = "Створити проєкт";
+            projectForm.reset();
+            modalFormContent.style.display = 'flex';
+            modalStatusContent.style.display = 'none';
+            projectModalOverlay.style.display = 'flex';
+        });
+        
+        closeModalBtn.addEventListener('click', () => {
+            projectModalOverlay.style.display = 'none';
+        });
+
+        projectModalOverlay.addEventListener('click', (e) => {
+            if (e.target === projectModalOverlay) {
+                projectModalOverlay.style.display = 'none';
+            }
+        });
+
+        clearFormBtn.addEventListener('click', () => {
+            projectForm.reset();
+        });
+
+        projectForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const projectName = projectNameInput.value;
+            const projectDescription = projectDescriptionInput.value;
+            const projectImage = projectImageInput.files[0];
+            
+            modalFormContent.style.display = 'none';
+            modalStatusContent.style.display = 'flex';
+            modalProgressBar.style.width = '0';
+            modalStatusText.textContent = 'Збереження...';
+            closeModalBtn.style.display = 'none';
+            
+            const progressUpdateInterval = setInterval(() => {
+                let currentWidth = parseFloat(modalProgressBar.style.width);
+                if (currentWidth < 90) {
+                    modalProgressBar.style.width = `${currentWidth + 5}%`;
+                }
+            }, 200);
+
+            try {
+                if (isEditing) {
+                    await updateProject(user.uid, editingProjectId, projectName, projectDescription, projectImage);
+                } else {
+                    if (projectListContainer.children.length >= projectsLimit) {
+                        throw new Error('Ви досягли ліміту проєктів для вашого тарифного плану.');
+                    }
+                    await createProject(user.uid, projectName, projectDescription, projectImage);
+                }
+                
+                clearInterval(progressUpdateInterval);
+                modalProgressBar.style.width = '100%';
+                modalStatusText.textContent = 'Проєкт успішно збережено!';
+                modalStatusText.classList.remove('error');
+                modalStatusText.classList.add('success');
+                closeModalBtn.style.display = 'block';
+
+            } catch (error) {
+                clearInterval(progressUpdateInterval);
+                modalProgressBar.style.width = '100%';
+                modalStatusText.textContent = `Помилка: ${error.message || 'невідома'}`;
+                modalStatusText.classList.remove('success');
+                modalStatusText.classList.add('error');
+                closeModalBtn.style.display = 'block';
+                console.error('Error:', error);
+            }
+            
+            fetchProjects(user.uid);
+        });
+
+        async function createProject(userId, name, description, imageFile) {
+            let imageUrl = '';
+            if (imageFile) {
+                const webpBlob = await convertToWebp(imageFile);
+                const imageName = name.replace(/\s+/g, '-').toLowerCase();
+                const storageRef = storage.ref().child(`project_logos/${userId}/${imageName}.webp`);
+                await storageRef.put(webpBlob);
+                imageUrl = await storageRef.getDownloadURL();
+            }
+
+            await db.collection('projects').add({
+                userId: userId,
+                name: name,
+                description: description,
+                logoUrl: imageUrl,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        async function updateProject(userId, projectId, name, description, imageFile) {
+            const projectRef = db.collection('projects').doc(projectId);
+            const updateData = {
+                name: name,
+                description: description
+            };
+
+            if (imageFile) {
+                const projectDoc = await projectRef.get();
+                if (projectDoc.exists && projectDoc.data().logoUrl) {
+                    const oldImageRef = storage.refFromURL(projectDoc.data().logoUrl);
+                    await oldImageRef.delete().catch(err => console.warn('Old logo not found or could not be deleted:', err));
+                }
+                
+                const webpBlob = await convertToWebp(imageFile);
+                const imageName = name.replace(/\s+/g, '-').toLowerCase();
+                const storageRef = storage.ref().child(`project_logos/${userId}/${imageName}.webp`);
+                await storageRef.put(webpBlob);
+                updateData.logoUrl = await storageRef.getDownloadURL();
+            }
+
+            await projectRef.update(updateData);
+        }
+
+        function deleteProject(projectId) {
+            if (confirm('Ви впевнені, що хочете видалити цей проєкт?')) {
+                const projectRef = db.collection('projects').doc(projectId);
+                projectRef.get().then(doc => {
+                    if (doc.exists && doc.data().logoUrl) {
+                        return storage.refFromURL(doc.data().logoUrl).delete();
+                    }
+                }).then(() => {
+                    return projectRef.delete();
+                }).then(() => {
+                    fetchProjects(auth.currentUser.uid);
+                }).catch(error => {
+                    console.error('Error deleting project:', error);
+                });
+            }
+        }
+        
+        function convertToWebp(imageFile) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        canvas.toBlob((blob) => {
+                            resolve(blob);
+                        }, 'image/webp');
+                    };
+                };
+                reader.readAsDataURL(imageFile);
+            });
+        }
+        
+        function fetchProjects(userId) {
+            projectListContainer.innerHTML = '';
+            const projectsRef = db.collection('projects').where('userId', '==', userId).orderBy('createdAt', 'desc');
+            projectsRef.onSnapshot(snapshot => {
+                projectListContainer.innerHTML = '';
+                projectsCountSpan.textContent = `${snapshot.size}/${projectsLimit} доступно`;
+                snapshot.forEach(doc => {
+                    const project = doc.data();
+                    const projectId = doc.id;
+                    const projectCard = document.createElement('div');
+                    projectCard.className = 'project-card';
+                    projectCard.innerHTML = `
+                        <div class="project-card-header">
+                            <img src="${project.logoUrl || 'https://via.placeholder.com/50'}" alt="${project.name} logo" class="project-logo">
+                            <div>
+                                <h4 style="margin: 0;">${project.name}</h4>
+                                <p style="margin: 5px 0 0; font-size: 14px; color: var(--light-text);">${project.description}</p>
+                            </div>
+                        </div>
+                        <div class="project-actions">
+                            <button onclick="deleteProject('${projectId}')">Видалити</button>
+                            <button onclick="openEditModal('${projectId}', '${project.name}', '${project.description}')">Редагувати</button>
+                            <button>Зібрати</button>
+                        </div>
+                    `;
+                    projectListContainer.appendChild(projectCard);
+                });
+            });
+        }
+        
+        function openEditModal(projectId, name, description) {
+            isEditing = true;
+            editingProjectId = projectId;
+            modalTitle.textContent = "Редагувати проєкт";
+            submitFormBtn.textContent = "Зберегти";
+            projectNameInput.value = name;
+            projectDescriptionInput.value = description;
+            modalFormContent.style.display = 'flex';
+            modalStatusContent.style.display = 'none';
+            projectModalOverlay.style.display = 'flex';
+        }
+    </script>
+
+</body>
+</html>
