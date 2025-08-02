@@ -552,6 +552,34 @@
             background-color: var(--current-plan-color);
         }
 
+        /* Стилі для сторінок */
+        .page-content {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .page-content h2 {
+            text-align: center;
+        }
+        .contacts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .contact-card {
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .contact-card h4 {
+            margin-top: 0;
+            color: var(--primary-blue);
+        }
+
         @media (max-width: 768px) {
             .project-list {
                 grid-template-columns: 1fr;
@@ -609,9 +637,9 @@
                 </div>
             </div>
             <a href="#" class="menu-item" id="mainMenuItem">Головна сторінка</a>
-            <a href="#" class="menu-item">Модулі</a>
             <a href="#" class="menu-item" id="tariffsMenuItem">Тарифи</a>
-            <a href="#" class="menu-item">Про проєкт</a>
+            <a href="#" class="menu-item" id="aboutMenuItem">Про проєкт</a>
+            <a href="#" class="menu-item" id="contactsMenuItem">Контакти</a>
             <a href="#" class="menu-item">Документація</a>
             <a href="#" class="menu-item" id="signOutBtn" style="color: var(--primary-blue);">Вийти</a>
             <div class="copyright" style="position: static; text-align: center; margin-top: 20px;">© 2024 Weebwe</div>
@@ -710,6 +738,8 @@
         const mainContent = document.getElementById('mainContent');
         const mainMenuItem = document.getElementById('mainMenuItem');
         const tariffsMenuItem = document.getElementById('tariffsMenuItem');
+        const aboutMenuItem = document.getElementById('aboutMenuItem');
+        const contactsMenuItem = document.getElementById('contactsMenuItem');
 
         const projectModalOverlay = document.getElementById('projectModalOverlay');
         const projectForm = document.getElementById('projectForm');
@@ -844,13 +874,29 @@
                 sideMenu.classList.remove('open');
             }
         });
+        
+        aboutMenuItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderAboutPage();
+            if (sideMenu.classList.contains('open')) {
+                sideMenu.classList.remove('open');
+            }
+        });
+
+        contactsMenuItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderContactsPage();
+            if (sideMenu.classList.contains('open')) {
+                sideMenu.classList.remove('open');
+            }
+        });
 
         // --- Dynamic Page Rendering ---
         function renderMainPage(userId) {
             mainContent.innerHTML = `
                 <div class="projects-header">
                     <h2 style="margin: 0;">Мої проєкти</h2>
-                    <span id="projectsCount">0/10 доступно</span>
+                    <span id="projectsCount">0/${projectsLimit} доступно</span>
                 </div>
                 <div class="project-list" id="projectList">
                     </div>
@@ -917,6 +963,42 @@
                 });
             });
         }
+        
+        function renderContactsPage() {
+            mainContent.innerHTML = `
+                <div class="page-content">
+                    <h2>Контакти</h2>
+                    <p style="text-align: center;">Якщо у вас є запитання, пропозиції або проблеми, зв'яжіться з нами!</p>
+                    <div class="contacts-grid">
+                        <div class="contact-card">
+                            <h4>Технічна підтримка</h4>
+                            <p>E-mail: support@weebwe.com</p>
+                            <p>Телефон: +380 (50) 123-45-67</p>
+                        </div>
+                        <div class="contact-card">
+                            <h4>Відділ продажів</h4>
+                            <p>E-mail: sales@weebwe.com</p>
+                            <p>Телефон: +380 (67) 987-65-43</p>
+                        </div>
+                        <div class="contact-card">
+                            <h4>Головний офіс</h4>
+                            <p>Україна, м. Київ, вул. Хрещатик, 1</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderAboutPage() {
+            mainContent.innerHTML = `
+                <div class="page-content">
+                    <h2>Про Weebwe CMS</h2>
+                    <p>Weebwe CMS — це сучасна та інтуїтивно зрозуміла система управління контентом, створена для того, щоб зробити процес розробки та підтримки вебсайтів максимально простим та ефективним.</p>
+                    <p>Наша місія — надати потужний інструмент, який дозволить вам реалізувати будь-які ідеї, від простих блогів до складних корпоративних порталів, не занурюючись у технічні деталі.</p>
+                    <p>Розробка Weebwe CMS здійснюється з урахуванням сучасних стандартів безпеки, продуктивності та зручності користування. Ми постійно працюємо над новими функціями, щоб наша платформа залишалася актуальною та відповідала найвищим вимогам ринку.</p>
+                </div>
+            `;
+        }
 
         // --- General Modal Logic ---
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -943,7 +1025,6 @@
             messageText.textContent = message;
             messageModalOverlay.style.display = 'flex';
             
-            // Clear existing listeners to prevent duplication
             const newCloseBtn = messageModalCloseBtn.cloneNode(true);
             messageModalCloseBtn.parentNode.replaceChild(newCloseBtn, messageModalCloseBtn);
             
