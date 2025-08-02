@@ -83,12 +83,12 @@
             text-align: center;
             height: 100vh;
         }
-        
+
         .auth-screen-logo {
             margin-bottom: 30px;
             max-width: 150px;
         }
-        
+
         .auth-screen button {
             padding: 10px 20px;
             font-size: 16px;
@@ -175,26 +175,34 @@
             background-color: var(--secondary-blue);
             border-radius: 5px;
         }
-        
+
         .main-content {
             flex-grow: 1;
             padding: 20px;
             overflow-y: auto;
         }
-        
+
         .projects-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
         }
-        
+
         .project-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
         }
-        
+
+        .no-projects-message {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--light-text);
+            font-style: italic;
+            padding: 50px 0;
+        }
+
         .project-card {
             background-color: var(--white);
             border-radius: 8px;
@@ -204,25 +212,25 @@
             flex-direction: column;
             gap: 15px;
         }
-        
+
         .project-card-header {
             display: flex;
             align-items: center;
             gap: 15px;
         }
-        
+
         .project-logo {
             width: 50px;
             height: 50px;
             object-fit: contain;
         }
-        
+
         .project-actions {
             display: flex;
             gap: 10px;
             margin-top: auto;
         }
-        
+
         .project-actions button {
             padding: 8px 12px;
             border: 1px solid #e0e0e0;
@@ -230,7 +238,7 @@
             background-color: transparent;
             cursor: pointer;
         }
-        
+
         .project-actions button:hover {
             background-color: var(--secondary-blue);
         }
@@ -258,8 +266,22 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            position: relative; /* Added for positioning the close button */
         }
-        
+
+        .modal-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            color: var(--light-text);
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+            margin: 0;
+        }
+
         .modal-content-form {
             display: flex;
             flex-direction: column;
@@ -273,12 +295,12 @@
             text-align: center;
             gap: 20px;
         }
-        
+
         .modal-status-text.success {
             color: var(--primary-blue);
             font-weight: bold;
         }
-        
+
         .modal-status-text.error {
             color: var(--error-red);
             font-weight: bold;
@@ -304,17 +326,17 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        
+
         #createProjectBtn, #submitFormBtn {
             background-color: var(--primary-blue);
             color: var(--white);
         }
-        
+
         #clearFormBtn {
             background-color: #f0f0f0;
             color: var(--dark-text);
         }
-        
+
         #closeModalBtn {
             background-color: var(--primary-blue);
             color: var(--white);
@@ -399,8 +421,9 @@
 
     <div class="modal-overlay" id="projectModalOverlay">
         <div class="modal">
+            <button type="button" class="modal-close-btn" onclick="document.getElementById('projectModalOverlay').style.display='none';">×</button>
             <h3 id="modalTitle">Створити новий проєкт</h3>
-            
+
             <div class="modal-content-form" id="modalFormContent">
                 <form id="projectForm">
                     <input type="file" id="projectImageInput" accept="image/*">
@@ -412,7 +435,7 @@
                     </div>
                 </form>
             </div>
-            
+
             <div class="modal-content-status" id="modalStatusContent">
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="modalProgressBar"></div>
@@ -479,6 +502,7 @@
         let isEditing = false;
         let editingProjectId = null;
         let projectsLimit = 10;
+        let projectsListener = null;
 
         // --- Splash Screen & Initial Loading ---
         let progress = 0;
@@ -550,11 +574,15 @@
             modalStatusContent.style.display = 'none';
             projectModalOverlay.style.display = 'flex';
         });
-        
-        closeModalBtn.addEventListener('click', () => {
-            projectModalOverlay.style.display = 'none';
+
+        // Close modal with close button
+        document.querySelectorAll('.modal-close-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                projectModalOverlay.style.display = 'none';
+            });
         });
 
+        // Close modal by clicking outside
         projectModalOverlay.addEventListener('click', (e) => {
             if (e.target === projectModalOverlay) {
                 projectModalOverlay.style.display = 'none';
@@ -572,174 +600,4 @@
 
             const projectName = projectNameInput.value;
             const projectDescription = projectDescriptionInput.value;
-            const projectImage = projectImageInput.files[0];
-            
-            modalFormContent.style.display = 'none';
-            modalStatusContent.style.display = 'flex';
-            modalProgressBar.style.width = '0';
-            modalStatusText.textContent = 'Збереження...';
-            closeModalBtn.style.display = 'none';
-            
-            const progressUpdateInterval = setInterval(() => {
-                let currentWidth = parseFloat(modalProgressBar.style.width);
-                if (currentWidth < 90) {
-                    modalProgressBar.style.width = `${currentWidth + 5}%`;
-                }
-            }, 200);
-
-            try {
-                if (isEditing) {
-                    await updateProject(user.uid, editingProjectId, projectName, projectDescription, projectImage);
-                } else {
-                    if (projectListContainer.children.length >= projectsLimit) {
-                        throw new Error('Ви досягли ліміту проєктів для вашого тарифного плану.');
-                    }
-                    await createProject(user.uid, projectName, projectDescription, projectImage);
-                }
-                
-                clearInterval(progressUpdateInterval);
-                modalProgressBar.style.width = '100%';
-                modalStatusText.textContent = 'Проєкт успішно збережено!';
-                modalStatusText.classList.remove('error');
-                modalStatusText.classList.add('success');
-                closeModalBtn.style.display = 'block';
-
-            } catch (error) {
-                clearInterval(progressUpdateInterval);
-                modalProgressBar.style.width = '100%';
-                modalStatusText.textContent = `Помилка: ${error.message || 'невідома'}`;
-                modalStatusText.classList.remove('success');
-                modalStatusText.classList.add('error');
-                closeModalBtn.style.display = 'block';
-                console.error('Error:', error);
-            }
-            
-            fetchProjects(user.uid);
-        });
-
-        async function createProject(userId, name, description, imageFile) {
-            let imageUrl = '';
-            if (imageFile) {
-                const webpBlob = await convertToWebp(imageFile);
-                const imageName = name.replace(/\s+/g, '-').toLowerCase();
-                const storageRef = storage.ref().child(`project_logos/${userId}/${imageName}.webp`);
-                await storageRef.put(webpBlob);
-                imageUrl = await storageRef.getDownloadURL();
-            }
-
-            await db.collection('projects').add({
-                userId: userId,
-                name: name,
-                description: description,
-                logoUrl: imageUrl,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-        
-        async function updateProject(userId, projectId, name, description, imageFile) {
-            const projectRef = db.collection('projects').doc(projectId);
-            const updateData = {
-                name: name,
-                description: description
-            };
-
-            if (imageFile) {
-                const projectDoc = await projectRef.get();
-                if (projectDoc.exists && projectDoc.data().logoUrl) {
-                    const oldImageRef = storage.refFromURL(projectDoc.data().logoUrl);
-                    await oldImageRef.delete().catch(err => console.warn('Old logo not found or could not be deleted:', err));
-                }
-                
-                const webpBlob = await convertToWebp(imageFile);
-                const imageName = name.replace(/\s+/g, '-').toLowerCase();
-                const storageRef = storage.ref().child(`project_logos/${userId}/${imageName}.webp`);
-                await storageRef.put(webpBlob);
-                updateData.logoUrl = await storageRef.getDownloadURL();
-            }
-
-            await projectRef.update(updateData);
-        }
-
-        function deleteProject(projectId) {
-            if (confirm('Ви впевнені, що хочете видалити цей проєкт?')) {
-                const projectRef = db.collection('projects').doc(projectId);
-                projectRef.get().then(doc => {
-                    if (doc.exists && doc.data().logoUrl) {
-                        return storage.refFromURL(doc.data().logoUrl).delete();
-                    }
-                }).then(() => {
-                    return projectRef.delete();
-                }).then(() => {
-                    fetchProjects(auth.currentUser.uid);
-                }).catch(error => {
-                    console.error('Error deleting project:', error);
-                });
-            }
-        }
-        
-        function convertToWebp(imageFile) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    img.src = e.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-                        canvas.toBlob((blob) => {
-                            resolve(blob);
-                        }, 'image/webp');
-                    };
-                };
-                reader.readAsDataURL(imageFile);
-            });
-        }
-        
-        function fetchProjects(userId) {
-            projectListContainer.innerHTML = '';
-            const projectsRef = db.collection('projects').where('userId', '==', userId).orderBy('createdAt', 'desc');
-            projectsRef.onSnapshot(snapshot => {
-                projectListContainer.innerHTML = '';
-                projectsCountSpan.textContent = `${snapshot.size}/${projectsLimit} доступно`;
-                snapshot.forEach(doc => {
-                    const project = doc.data();
-                    const projectId = doc.id;
-                    const projectCard = document.createElement('div');
-                    projectCard.className = 'project-card';
-                    projectCard.innerHTML = `
-                        <div class="project-card-header">
-                            <img src="${project.logoUrl || 'https://via.placeholder.com/50'}" alt="${project.name} logo" class="project-logo">
-                            <div>
-                                <h4 style="margin: 0;">${project.name}</h4>
-                                <p style="margin: 5px 0 0; font-size: 14px; color: var(--light-text);">${project.description}</p>
-                            </div>
-                        </div>
-                        <div class="project-actions">
-                            <button onclick="deleteProject('${projectId}')">Видалити</button>
-                            <button onclick="openEditModal('${projectId}', '${project.name}', '${project.description}')">Редагувати</button>
-                            <button>Зібрати</button>
-                        </div>
-                    `;
-                    projectListContainer.appendChild(projectCard);
-                });
-            });
-        }
-        
-        function openEditModal(projectId, name, description) {
-            isEditing = true;
-            editingProjectId = projectId;
-            modalTitle.textContent = "Редагувати проєкт";
-            submitFormBtn.textContent = "Зберегти";
-            projectNameInput.value = name;
-            projectDescriptionInput.value = description;
-            modalFormContent.style.display = 'flex';
-            modalStatusContent.style.display = 'none';
-            projectModalOverlay.style.display = 'flex';
-        }
-    </script>
-
-</body>
-</html>
+            const projectImage = projectImageInput.files
