@@ -764,7 +764,7 @@
 
         let isEditing = false;
         let editingProjectId = null;
-        let projectsLimit = 10;
+        let projectsLimit = 1; // dynamically updated
         let projectsListener = null;
         let currentTariffPlan = 'basic'; // За замовчуванням
 
@@ -774,25 +774,29 @@
                 id: 'basic',
                 name: 'Базовий',
                 price: 'Безкоштовно',
-                features: ['До 1 проєкту', 'Основні інструменти', 'Доступ до документації']
+                features: ['До 1 проєкту', 'Основні інструменти', 'Доступ до документації'],
+                limit: 1
             },
             {
                 id: 'professional',
                 name: 'Професійний',
                 price: '$10/місяць',
-                features: ['До 10 проєктів', 'Розширені інструменти SEO', 'Додаткові модулі', 'Пріоритетна підтримка']
+                features: ['До 10 проєктів', 'Розширені інструменти SEO', 'Додаткові модулі', 'Пріоритетна підтримка'],
+                limit: 10
             },
             {
                 id: 'business',
                 name: 'Бізнес',
                 price: '$30/місяць',
-                features: ['До 30 проєктів', 'Підключення кастомних модулів', 'VIP-підтримка 24/7', 'Особистий менеджер']
+                features: ['До 30 проєктів', 'Підключення кастомних модулів', 'VIP-підтримка 24/7', 'Особистий менеджер'],
+                limit: 30
             },
             {
                 id: 'corporate',
                 name: 'Корпоративний',
                 price: '$100/місяць',
-                features: ['Необмежена кількість проєктів', 'Кастомна розробка модулів', 'Розподілене сховище', 'Персональний технічний спеціаліст']
+                features: ['Необмежена кількість проєктів', 'Кастомна розробка модулів', 'Розподілене сховище', 'Персональний технічний спеціаліст'],
+                limit: Infinity
             }
         ];
 
@@ -826,6 +830,7 @@
                 mainContainer.style.display = 'flex';
                 userNameSpan.textContent = user.displayName;
                 userAvatarImg.src = user.photoURL;
+                updateProjectsLimit(); // Update the limit based on the current plan
                 userPlanHeader.textContent = `Тариф: ${tariffPlans.find(plan => plan.id === currentTariffPlan).name}`;
                 renderMainPage(user.uid);
             } else {
@@ -891,12 +896,20 @@
             }
         });
 
+        function updateProjectsLimit() {
+            const currentPlan = tariffPlans.find(plan => plan.id === currentTariffPlan);
+            projectsLimit = currentPlan.limit;
+            if (document.getElementById('projectsCount')) {
+                document.getElementById('projectsCount').textContent = `0/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
+            }
+        }
+        
         // --- Dynamic Page Rendering ---
         function renderMainPage(userId) {
             mainContent.innerHTML = `
                 <div class="projects-header">
                     <h2 style="margin: 0;">Мої проєкти</h2>
-                    <span id="projectsCount">0/${projectsLimit} доступно</span>
+                    <span id="projectsCount">0/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно</span>
                 </div>
                 <div class="project-list" id="projectList">
                     </div>
@@ -952,7 +965,6 @@
                 </div>
             `;
             
-            // Re-attach event listeners for tariff buttons
             document.querySelectorAll('.subscribe-btn:not(.current-plan-btn)').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const planId = e.target.dataset.planId;
@@ -1084,7 +1096,7 @@
                 } else {
                     const projectListContainer = document.getElementById('projectList');
                     if (projectListContainer.querySelectorAll('.project-card').length >= projectsLimit) {
-                        throw new Error('Ви досягли ліміту проєктів для вашого тарифного плану.');
+                        throw new Error('Ви досягли ліміту проєктів для вашого тарифного плану. Щоб створити більше проєктів, будь ласка, оновіть свій тариф.');
                     }
                     await createProject(user.uid, projectName, projectDescription, projectImage);
                 }
@@ -1197,7 +1209,7 @@
 
             projectsListener = projectsRef.onSnapshot(snapshot => {
                 projectListContainer.innerHTML = '';
-                projectsCountSpan.textContent = `${snapshot.size}/${projectsLimit} доступно`;
+                projectsCountSpan.textContent = `${snapshot.size}/${projectsLimit === Infinity ? 'Необмежено' : projectsLimit} доступно`;
 
                 if (snapshot.size === 0) {
                     const noProjectsMessage = document.createElement('p');
